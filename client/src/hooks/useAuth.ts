@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ywflgzyrdikqhlkjrypy.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_8vs-iop38Ii2nfZwXQPQRA_fuNTEDbk';
-
-const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface AuthUser {
   id: string;
@@ -40,25 +34,7 @@ export function useAuth(): UseAuthReturn {
         localStorage.removeItem('user');
       }
     }
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        const userData = {
-          id: session.user.id,
-          email: session.user.email || '',
-        };
-        setUser(userData);
-        localStorage.setItem('token', session.access_token);
-        localStorage.setItem('user', JSON.stringify(userData));
-      } else {
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    setLoading(false);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -128,17 +104,10 @@ export function useAuth(): UseAuthReturn {
 
   const logout = useCallback(async () => {
     setLoading(true);
-    
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      setLoading(false);
-    }
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setLoading(false);
   }, []);
 
   const getToken = useCallback((): string | null => {
