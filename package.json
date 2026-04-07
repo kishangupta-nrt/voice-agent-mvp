@@ -4,9 +4,9 @@
   "private": true,
   "description": "Voice AI Agent with JWT Auth",
   "scripts": {
-    "install:server": "cd server && npm install",
-    "build:server": "cd server && npm run build",
-    "start:server": "cd server && npm start"
+    "install": "cd server && npm install",
+    "build": "cd server && npm run build",
+    "start": "cd server && npm start"
   },
   "engines": {
     "node": ">=18.0.0"
