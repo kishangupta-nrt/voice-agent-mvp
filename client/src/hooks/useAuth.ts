@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ywflgzyrdikqhlkjrypy.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_8vs-iop38Ii2nfZwXQPQRA_fuNTEDbk';
@@ -64,24 +66,25 @@ export function useAuth(): UseAuthReturn {
     setError(null);
     
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (signInError) {
-        throw new Error(signInError.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      if (data.user && data.session) {
-        const userData = {
-          id: data.user.id,
-          email: data.user.email || '',
-        };
-        setUser(userData);
-        localStorage.setItem('token', data.session.access_token);
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
+      const userData = {
+        id: data.user.id,
+        email: data.user.email,
+      };
+      setUser(userData);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
       setError(message);
@@ -96,23 +99,24 @@ export function useAuth(): UseAuthReturn {
     setError(null);
     
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (signUpError) {
-        throw new Error(signUpError.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
       }
 
-      if (data.user) {
-        const userData = {
-          id: data.user.id,
-          email: data.user.email || '',
-        };
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
+      const userData = {
+        id: data.user?.id,
+        email: data.user?.email || email,
+      };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setError(message);
