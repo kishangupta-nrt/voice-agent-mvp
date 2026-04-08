@@ -35,7 +35,8 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
     try {
       if (isRegister) {
         await onRegister(email, password);
-        setLocalError('Check your email to confirm your account!');
+        setLocalError('Account created! You can now sign in.');
+        setIsRegister(false);
       } else {
         await onLogin(email, password);
       }
