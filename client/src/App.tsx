@@ -3,17 +3,21 @@ import { useVoice, Status } from './hooks/useVoice';
 import { useAuth } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 function UnsupportedBrowser() {
   return (
-    <div className="app">
-      <div className="glass-card unsupported">
-        <h2>Unsupported Browser</h2>
-        <p>Please use Chrome for voice features.</p>
+    <>
+      <div className="app">
+        <div className="glass-card unsupported">
+          <h2>Unsupported Browser</h2>
+          <p>Please use Chrome for voice features.</p>
+        </div>
       </div>
-    </div>
+      <SpeedInsights />
+    </>
   );
 }
 
@@ -48,43 +52,46 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
   };
 
   return (
-    <div className="app">
-      <div className="glass-card login">
-        <h2>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
-        <p className="subtitle">Sign in to continue</p>
-        
-        <div className="auth-form">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+    <>
+      <div className="app">
+        <div className="glass-card login">
+          <h2>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
+          <p className="subtitle">Sign in to continue</p>
           
-          {(error || localError) && <div className="error">{error || localError}</div>}
+          <div className="auth-form">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            
+            {(error || localError) && <div className="error">{error || localError}</div>}
+            
+            <button type="button" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Loading...' : isRegister ? 'Sign Up' : 'Sign In'}
+            </button>
+          </div>
           
-          <button type="button" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Loading...' : isRegister ? 'Sign Up' : 'Sign In'}
-          </button>
+          <p className="toggle">
+            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button onClick={() => setIsRegister(!isRegister)}>
+              {isRegister ? 'Sign In' : 'Sign Up'}
+            </button>
+          </p>
         </div>
-        
-        <p className="toggle">
-          {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button onClick={() => setIsRegister(!isRegister)}>
-            {isRegister ? 'Sign In' : 'Sign Up'}
-          </button>
-        </p>
       </div>
-    </div>
+      <SpeedInsights />
+    </>
   );
 }
 
@@ -210,11 +217,14 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="app">
-        <div className="glass-card">
-          <p>Loading...</p>
+      <>
+        <div className="app">
+          <div className="glass-card">
+            <p>Loading...</p>
+          </div>
         </div>
-      </div>
+        <SpeedInsights />
+      </>
     );
   }
 
@@ -240,6 +250,7 @@ export default function App() {
         </div>
       </div>
       <MainApp token={token} />
+      <SpeedInsights />
     </>
   );
 }
