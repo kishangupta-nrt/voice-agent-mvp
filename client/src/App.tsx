@@ -3,6 +3,7 @@ import { useVoice, Status } from './hooks/useVoice';
 import { useAuth } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
+import { Eye, EyeOff } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -25,6 +26,7 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -61,14 +63,24 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+          <div className="password-input-wrapper">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           
           {(error || localError) && <div className="error">{error || localError}</div>}
           
