@@ -7,14 +7,9 @@ import authRoutes from './routes/auth.routes';
 
 const app: Application = express();
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://voice-agent-mvp-ten.vercel.app'
-];
-
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || ENV.CORS_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('CORS not allowed'), false);

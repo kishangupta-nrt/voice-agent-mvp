@@ -351,7 +351,7 @@ body {
 }
 
 .auth-form button {
-  padding: 14px;
+  padding: 8px;
   border-radius: 12px;
   border: none;
   background: var(--accent);

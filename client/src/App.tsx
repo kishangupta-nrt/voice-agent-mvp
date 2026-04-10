@@ -4,8 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
 import { Eye, EyeOff } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { API_URL } from './config/api';
 
 function UnsupportedBrowser() {
   return (

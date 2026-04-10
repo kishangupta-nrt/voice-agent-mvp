@@ -11,11 +11,6 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  if (ENV.NODE_ENV === 'development' && !req.headers.authorization) {
-    req.userId = 'dev-user-001';
-    return next();
-  }
-
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'No token provided' });
@@ -25,6 +20,11 @@ export const authMiddleware = async (
   const token = authHeader.slice(7);
   if (!token) {
     res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
+  if (!ENV.SUPABASE_JWT_SECRET) {
+    res.status(500).json({ error: 'Server misconfiguration: JWT secret not set' });
     return;
   }
 

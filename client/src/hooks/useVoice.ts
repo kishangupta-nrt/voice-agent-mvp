@@ -15,6 +15,7 @@ export function useVoice(): UseVoiceReturn {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
 
   const isSupported = 
     'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
@@ -24,6 +25,7 @@ export function useVoice(): UseVoiceReturn {
       recognitionRef.current.abort();
       recognitionRef.current = null;
     }
+    isListeningRef.current = false;
     window.speechSynthesis.cancel();
     setStatus('idle');
     setError(null);
@@ -57,6 +59,7 @@ export function useVoice(): UseVoiceReturn {
 
       setError(null);
       setStatus('listening');
+      isListeningRef.current = true;
 
       recognition.onresult = (event: any) => {
         const text = event.results[0][0].transcript;
@@ -65,6 +68,7 @@ export function useVoice(): UseVoiceReturn {
       };
 
       recognition.onerror = (event: any) => {
+        isListeningRef.current = false;
         if (event.error === 'no-speech') {
           setStatus('idle');
           return;
@@ -74,17 +78,19 @@ export function useVoice(): UseVoiceReturn {
       };
 
       recognition.onend = () => {
-        if (status === 'listening') {
+        if (isListeningRef.current) {
+          isListeningRef.current = false;
           setStatus('idle');
         }
       };
 
       recognition.start();
     } catch (err: any) {
+      isListeningRef.current = false;
       setError(err.message || 'Failed to start speech recognition');
       setStatus('error');
     }
-  }, [isSupported, status]);
+  }, [isSupported]);
 
   const speak = useCallback((text: string): Promise<void> => {
     return new Promise<void>((resolve) => {
