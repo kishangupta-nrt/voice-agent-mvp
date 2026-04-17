@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useVoice, Status } from './hooks/useVoice';
 import { useAuth } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
@@ -100,52 +100,82 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
 }
 
 function MainApp({ token }: { token: string }) {
-  const { status, error: speechError, isSupported, startListening, stopAll, speak } = useVoice();
+  const { status, interimTranscript, startConversation, stopConversation, speak, isListening, error: voiceError } = useVoice();
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [displayError, setDisplayError] = useState<string | null>(null);
 
-  const handleVoice = useCallback(() => {
-    setTranscript('');
-    setResponse('');
+  const handleVoiceCallback = useCallback((text: string) => {
+    setTranscript(text);
+    setApiError(null);
+    setDisplayError(null);
 
-    startListening(async (text) => {
-      setTranscript(text);
-
-      try {
-        const res = await fetch(`${API_URL}/chat`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            message: text,
-            conversationId,
-          }),
-        });
-
+    fetch(`${API_URL}/chat`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        message: text,
+        conversationId: conversationId,
+      }),
+    })
+      .then((res) => {
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Request failed');
+          return res.json().then(data => {
+            throw new Error(data.error || 'Request failed');
+          });
         }
-
-        const data = await res.json();
-
+        return res.json();
+      })
+      .then((data) => {
         setResponse(data.response);
         if (data.conversationId) {
           setConversationId(data.conversationId);
         }
-
-        await speak(data.response);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+        return speak(data.response);
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Something went wrong';
         setApiError(msg);
-        console.error('API error:', err);
-      }
-    });
-  }, [conversationId, startListening, speak, token]);
+        setDisplayError(msg);
+      });
+  }, [conversationId, speak, token]);
+
+  const handleVoice = useCallback(() => {
+    if (status !== 'idle') {
+      stopConversation();
+    } else {
+      setTranscript('');
+      setResponse('');
+      setApiError(null);
+      setDisplayError(null);
+      startConversation(handleVoiceCallback);
+    }
+  }, [status, stopConversation, startConversation, handleVoiceCallback]);
+
+  const handleErrorDismiss = useCallback(() => {
+    setDisplayError(null);
+    setApiError(null);
+  }, []);
+
+  useEffect(() => {
+    if (voiceError) {
+      setDisplayError(voiceError);
+    }
+  }, [voiceError]);
+
+  useEffect(() => {
+    if (apiError) {
+      setDisplayError(apiError);
+      setTimeout(() => {
+        startConversation(handleVoiceCallback);
+      }, 1000);
+    }
+  }, [apiError, startConversation, handleVoiceCallback]);
 
   return (
     <div className="app">
@@ -165,18 +195,20 @@ function MainApp({ token }: { token: string }) {
         <VoiceButton
           status={status}
           onStart={handleVoice}
-          onStop={stopAll}
+          onStop={handleVoice}
         />
 
         <StatusDisplay
           status={status}
           transcript={transcript}
           response={response}
-          error={speechError || apiError}
+          error={displayError}
+          interimTranscript={interimTranscript}
+          onDismissError={handleErrorDismiss}
         />
 
         <div className="hint">
-          Click the button and speak • Click again to stop
+          {isListening ? 'Listening... Speak anytime' : 'Tap to start conversation'}
         </div>
       </div>
     </div>

@@ -1,62 +1,98 @@
 # Voice Agent MVP - Complete Working Report
 
 **Project:** Voice AI Agent  
-**Version:** 2.0.0  
-**Date:** April 7, 2026  
-**Status:** ✅ Production Ready
+**Version:** 3.0.0  
+**Date:** April 16, 2026  
+**Status:** Production Ready
 
 ---
 
 ## Executive Summary
 
-A zero-cost voice AI agent that runs entirely locally using:
-- **Frontend:** React + TypeScript + PWA
+A zero-cost, privacy-first voice AI agent with a clean conversation loop architecture:
+
+- **Frontend:** React + TypeScript + Vite
 - **Backend:** Node.js + Express + TypeScript
-- **AI:** Ollama (Mistral model)
+- **AI:** Ollama (Mistral) or Mistral API
 - **Database:** Supabase PostgreSQL
 - **Speech:** Web Speech API (Chrome)
 
-**Cost:** $0 | **Privacy:** 100% Local | **Setup Time:** 10 minutes
+**Cost:** $0 | **Privacy:** Local AI Option | **Browser:** Chrome/Edge
 
 ---
 
-## Architecture Diagram
+## Architecture
+
+### Clean Voice Conversation Loop
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLIENT (Browser)                              │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌───────┐ │
-│  │   Chrome    │───▶│   Web       │───▶│   React     │───▶│  PWA  │ │
-│  │   Browser   │◀───│   Speech   │◀───│   App       │◀───│ Shell │ │
-│  │  (Mic/Spk)  │    │   API      │    │             │    │       │ │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └───────┘ │
-└────────────────────────────────────┬─────────────────────────────────┘
-                                     │ HTTP /api/chat
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                       SERVER (localhost:3001)                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌───────┐ │
-│  │  Express    │───▶│  Rate       │───▶│   Chat      │───▶│  LLM  │ │
-│  │  Router     │    │   Limit     │    │   Service   │    │Service│ │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └───────┘ │
-│         │                                      │                      │
-│         │                                      ▼                      │
-│         │                               ┌─────────────┐              │
-│         └──────────────────────────────▶│ Supabase    │              │
-│                                         │ Repository  │              │
-│                                         └─────────────┘              │
-└────────────────────────────────────┬─────────────────────────────────┘
-                                     │
-                                     │ HTTP /api/generate
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                        OLLAMA (localhost:11434)                       │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐              │
-│  │   Mistral   │◀───│   REST      │◀───│   Model     │              │
-│  │   Model     │───▶│   API       │───▶│   Loader    │              │
-│  └─────────────┘    └─────────────┘    └─────────────┘              │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                      CONVERSATION LOOP                               │
+│                                                                     │
+│    ┌──────────┐                                                    │
+│    │   IDLE   │◀─────────────────────────────────────────┐        │
+│    └────┬─────┘                                             │        │
+│         │ tap                                              │        │
+│         ▼                                                   │        │
+│    ┌──────────┐     ┌──────────┐     ┌──────────┐          │        │
+│    │LISTENING │────▶│ THINKING │────▶│ SPEAKING │──────────┘        │
+│    └────┬─────┘     └────┬─────┘     └────┬─────┘                   │
+│         │               │               │                           │
+│         │               │               │ utterance.onend           │
+│         │               │               ▼                           │
+│         │               │         (auto-resume)                     │
+│         │               │               │                           │
+│         │               │               ▼                           │
+│         └───────────────┴──────────▶ LISTENING                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+### System Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Chrome     │────▶│   React     │────▶│   Express   │
+│   Browser    │◀────│   App       │◀────│   Server    │
+│  (Mic/Spk)   │     │             │     │             │
+└─────────────┘     └─────────────┘     └──────┬──────┘
+                                               │
+                    ┌─────────────┐             │
+                    │   Ollama    │◀───────────┘
+                    │  (Mistral)  │
+                    └─────────────┘
+```
+
+---
+
+## Voice Hook Architecture
+
+### Golden Rules
+
+| Rule | Implementation |
+|------|----------------|
+| No restart in `recognition.onend` | Recognition is just input |
+| Only restart in `utterance.onend` | State machine controls flow |
+| Single source of truth | `isActiveRef` boolean |
+| No flag juggling | Simple state machine |
+
+### Key Refs
+
+| Ref | Purpose |
+|-----|---------|
+| `isActiveRef` | Controls conversation loop (single source of truth) |
+| `isListeningRef` | Guards against double-start |
+| `interimRef` | Stores interim speech for silence detection |
+
+### State Machine
+
+| State | Trigger | Guards |
+|-------|---------|--------|
+| `idle` | Initial | - |
+| `listening` | `startConversation()` | Double-start protection |
+| `thinking` | `onResult()` | Recognition stopped |
+| `speaking` | `speak()` | TTS started |
+| `error` | Error event | Shows message, recovers |
 
 ---
 
@@ -77,19 +113,38 @@ A zero-cost voice AI agent that runs entirely locally using:
 | Express | 4.19.2 | HTTP Server |
 | TypeScript | 5.4.5 | Type Safety |
 | Supabase-js | 2.39.0 | Database Client |
-| Express-rate-limit | 7.1.5 | Rate Limiting |
-| Axios | 1.6.8 | HTTP Client |
+| Ollama/Mistral | Latest | LLM Provider |
 
-### AI/ML
-| Technology | Purpose |
-|------------|---------|
-| Ollama | Local LLM Runtime |
-| Mistral | Language Model |
+---
 
-### Database
-| Technology | Purpose |
-|------------|---------|
-| Supabase PostgreSQL | Conversation Storage |
+## Features
+
+### Voice Features
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Voice Input | ✅ | Web Speech API recognition |
+| Silence Detection | ✅ | 700ms timeout |
+| Voice Output | ✅ | Text-to-speech synthesis |
+| Auto-Resume | ✅ | Listens after AI speaks |
+| Error Recovery | ✅ | Continues on API failure |
+| Double-Start Guard | ✅ | Prevents multiple starts |
+
+### Security Features
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Rate Limiting | ✅ | 20 req/min per IP |
+| Input Sanitization | ✅ | Trim + 1000 char limit |
+| Timeout Handling | ✅ | 60s LLM timeout |
+| CORS | ✅ | Configured origins |
+| JWT Auth | ✅ | Supabase authentication |
+| RLS Policies | ✅ | Row-level security |
+
+### Persistence
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Conversation ID | ✅ | Tracks threads |
+| Message History | ✅ | User + assistant |
+| User Auth | ✅ | Supabase auth |
 
 ---
 
@@ -100,129 +155,55 @@ voice-agent-mvp/
 │
 ├── package.json                    # Root scripts
 │
-├── server/                         # Backend (Node.js + Express)
+├── server/                         # Backend
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── .env                        # Environment variables
+│   ├── .env                       # Environment
+│   ├── .env.example               # Template
 │   └── src/
-│       ├── app.ts                  # Express app entry
+│       ├── app.ts                  # Entry point
 │       ├── config/
-│       │   ├── env.ts              # Environment config
-│       │   └── constants.ts         # System prompt
+│       │   ├── env.ts             # Environment config
+│       │   └── constants.ts       # System prompt
 │       ├── controllers/
-│       │   └── chat.controller.ts  # Request handlers
+│       │   └── chat.controller.ts
 │       ├── services/
-│       │   ├── chat.service.ts     # Business logic
-│       │   └── llm.service.ts      # Ollama integration
-│       └── repositories/
-│           └── chat.repository.ts # Supabase integration
+│       │   ├── chat.service.ts
+│       │   └── llm.service.ts     # Ollama + Mistral
+│       ├── repositories/
+│       │   └── chat.repository.ts # Supabase
+│       ├── routes/
+│       │   ├── chat.routes.ts
+│       │   └── auth.routes.ts
+│       └── middleware/
+│           └── auth.ts             # JWT verification
 │
-├── client/                         # Frontend (React + Vite)
+├── client/                         # Frontend
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── vite.config.ts
 │   ├── index.html
 │   ├── .env
-│   ├── public/
-│   │   ├── manifest.json           # PWA manifest
-│   │   ├── sw.js                   # Service worker
-│   │   ├── favicon.svg
-│   │   └── icons/
-│   │       ├── icon-192.svg
-│   │       └── icon-512.svg
 │   └── src/
-│       ├── main.tsx                # Entry point
-│       ├── App.tsx                 # Main component
-│       ├── vite-env.d.ts           # Vite types
+│       ├── main.tsx
+│       ├── App.tsx                 # Main app
+│       ├── vite-env.d.ts
 │       ├── styles/
-│       │   └── globals.css         # Glass UI styles
+│       │   └── globals.css
 │       ├── hooks/
-│       │   └── useVoice.ts         # Voice recognition hook
+│       │   ├── useVoice.ts        # Voice recognition
+│       │   └── useAuth.ts         # Authentication
 │       └── components/
-│           ├── VoiceButton.tsx     # Mic button
-│           └── StatusDisplay.tsx   # Status display
+│           ├── VoiceButton.tsx
+│           └── StatusDisplay.tsx
 │
 ├── database/
 │   └── schema.sql                 # Supabase schema
 │
 ├── dist/                           # Production build
 │
-├── PROJECT_REPORT.md               # This report
-└── README.md                       # Quick start
-```
-
----
-
-## Features Implemented
-
-### ✅ Security & Stability
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Rate Limiting** | ✅ | 20 requests/minute per IP |
-| **Input Sanitization** | ✅ | Trim + 1000 char limit |
-| **Timeout Handling** | ✅ | 15 second LLM timeout |
-| **CORS Enabled** | ✅ | Cross-origin support |
-
-### ✅ UX Improvements
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Speech Cancel** | ✅ | Cancels previous speech before new |
-| **Abort Handling** | ✅ | User can stop mic/speech anytime |
-| **Browser Check** | ✅ | Shows error for unsupported browsers |
-| **Error States** | ✅ | Clear error messages |
-
-### ✅ AI Quality
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **System Prompt** | ✅ | Voice assistant persona |
-| **Response Length** | ✅ | Limited to 2 sentences |
-| **Natural Tone** | ✅ | Human-like responses |
-
-### ✅ Persistence
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Conversation ID** | ✅ | Tracks conversation threads |
-| **Message History** | ✅ | Stores user + assistant messages |
-| **Duration Tracking** | ✅ | Measures response time |
-
-### ✅ PWA Features
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Installable** | ✅ | Add to home screen |
-| **Offline Shell** | ✅ | UI works offline |
-| **Fast Loading** | ✅ | Service worker caching |
-
----
-
-## Voice Flow State Machine
-
-```
-┌────────┐
-│ IDLE   │◀─────────────────────────────────────────┐
-└───┬────┘                                          │
-    │ Click Mic                                     │
-    ▼                                              │
-┌────────────┐                                      │
-│ LISTENING │──────────────────┐                    │
-│ (pulse)   │                  │ No speech timeout  │
-└─────┬──────┘                  │                   │
-      │ Speech detected         │                   │
-      ▼                         │                   │
-┌────────────┐                   │                   │
-│ THINKING   │──────────────────┤                   │
-│ (clock)    │                  │ Error             │
-└─────┬──────┘                   │                   │
-      │ Response received        │                   │
-      ▼                         │                   │
-┌────────────┐                   │                   │
-│ SPEAKING   │──────────────────┘                   │
-│ (glow)     │                                      │
-└─────┬──────┘                                      │
-      │ Speech complete                             │
-      ▼                                             │
-┌────────┐                                          │
-│ IDLE   │─────────────────────────────────────────┘
-└────────┘
+├── README.md                       # Quick start guide
+└── PROJECT_REPORT.md              # This report
 ```
 
 ---
@@ -230,45 +211,34 @@ voice-agent-mvp/
 ## API Endpoints
 
 ### POST /api/chat
-
-**Request:**
 ```json
+// Request
 {
   "message": "Hello, how are you?",
   "conversationId": "optional-uuid"
 }
-```
 
-**Response:**
-```json
+// Response
 {
-  "response": "I'm doing well, thank you for asking!",
-  "conversationId": "uuid-of-conversation"
+  "response": "I'm doing well, thank you!",
+  "conversationId": "uuid"
 }
 ```
 
-### GET /api/chat?limit=10
+### GET /api/chat
+Returns conversation history.
 
-**Response:**
-```json
-{
-  "conversations": [
-    {
-      "id": "uuid",
-      "created_at": "2026-04-07T00:00:00Z",
-      "messages": [...]
-    }
-  ]
-}
-```
+### POST /api/auth/register
+Creates user account with email verification.
+
+### POST /api/auth/login
+Returns JWT token for API authentication.
 
 ### GET /api/health
-
-**Response:**
 ```json
 {
   "status": "ok",
-  "timestamp": "2026-04-07T00:00:00Z"
+  "timestamp": "2026-04-16T00:00:00Z"
 }
 ```
 
@@ -280,6 +250,7 @@ voice-agent-mvp/
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | UUID | PRIMARY KEY |
+| user_id | UUID | FK → auth.users |
 | created_at | TIMESTAMP | DEFAULT NOW() |
 
 ### messages
@@ -287,6 +258,7 @@ voice-agent-mvp/
 |--------|------|-------------|
 | id | UUID | PRIMARY KEY |
 | conversation_id | UUID | FK → conversations |
+| user_id | UUID | FK → auth.users |
 | role | TEXT | 'user' OR 'assistant' |
 | content | TEXT | NOT NULL |
 | duration_ms | INTEGER | Response time |
@@ -297,122 +269,40 @@ voice-agent-mvp/
 ## Installation & Setup
 
 ### Prerequisites
-```bash
-# 1. Node.js 18+
-node --version
-
-# 2. Ollama (with Mistral)
-ollama pull mistral
-ollama serve
-
-# 3. Chrome Browser (for Web Speech API)
-```
+1. Node.js 18+
+2. Ollama with Mistral model
+3. Chrome Browser
+4. Supabase project
 
 ### Quick Start
 ```bash
-# Clone and install
-cd voice-agent-mvp
+# Install dependencies
 npm run install:all
 
-# Run development (two terminals)
-npm run dev:server   # Terminal 1: Backend on :3001
-npm run dev:client   # Terminal 2: Frontend on :5173
+# Configure environment
+cp server/.env.example server/.env
+# Edit with your Supabase credentials
 
-# Or run both together
-npm run dev
-```
+# Start backend
+npm run dev:server
 
-### Database Setup (Supabase)
-```sql
--- Run in Supabase SQL Editor
--- See database/schema.sql
-```
-
-### Production Build
-```bash
-# Build both
-npm run build:all
-
-# Start production
-npm start
+# Start frontend
+npm run dev:client
 ```
 
 ---
 
 ## Environment Variables
 
-### Server (.env)
-```env
-PORT=3001
-OLLAMA_URL=http://localhost:11434/api/generate
-MODEL=mistral
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX=20
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_KEY=your-anon-key
-```
-
-### Client (.env)
-```env
-VITE_API_URL=/api
-```
-
----
-
-## Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| Bundle Size (JS) | 148 KB |
-| Bundle Size (Gzip) | 48 KB |
-| CSS Size | 4 KB |
-| Build Time | <1 second |
-| First Load | ~2 seconds |
-
----
-
-## Security Measures
-
-| Measure | Implementation |
-|---------|----------------|
-| Rate Limiting | 20 req/min/IP |
-| Input Validation | Type + length check |
-| Timeout | 15s LLM timeout |
-| CORS | Configured for dev |
-| SQL Injection | Parameterized queries (Supabase) |
-
----
-
-## Browser Compatibility
-
-| Browser | STT | TTS | Status |
-|---------|-----|-----|--------|
-| Chrome 90+ | ✅ | ✅ | Fully supported |
-| Edge 90+ | ✅ | ✅ | Fully supported |
-| Safari | ⚠️ | ⚠️ | Limited |
-| Firefox | ❌ | ⚠️ | Not supported |
-
----
-
-## File Inventory
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| server/src/app.ts | 45 | Express server |
-| server/src/config/env.ts | 15 | Environment config |
-| server/src/config/constants.ts | 8 | System prompt |
-| server/src/services/llm.service.ts | 45 | Ollama client |
-| server/src/services/chat.service.ts | 35 | Business logic |
-| server/src/repositories/chat.repository.ts | 80 | Supabase client |
-| server/src/controllers/chat.controller.ts | 50 | Request handlers |
-| server/src/routes/chat.routes.ts | 10 | API routes |
-| client/src/App.tsx | 90 | Main component |
-| client/src/hooks/useVoice.ts | 140 | Voice hook |
-| client/src/components/VoiceButton.tsx | 100 | Mic button |
-| client/src/components/StatusDisplay.tsx | 40 | Status display |
-| client/src/styles/globals.css | 250 | Glass UI styles |
-
-**Total:** ~950 lines of code
+### Server
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OLLAMA_URL` | Ollama endpoint | Yes |
+| `OLLAMA_MODEL` | Model name | Yes |
+| `MISTRAL_API_KEY` | Mistral API | Fallback |
+| `SUPABASE_URL` | Supabase project | Yes |
+| `SUPABASE_KEY` | Supabase key | Yes |
+| `SUPABASE_JWT_SECRET` | JWT secret | Yes |
 
 ---
 
@@ -420,47 +310,28 @@ VITE_API_URL=/api
 
 | Issue | Solution |
 |-------|----------|
-| "LLM service unavailable" | Run `ollama serve` |
-| "Speech not supported" | Use Chrome browser |
-| Rate limit error | Wait 1 minute |
-| Database error | Check Supabase credentials |
-| Build fails | Run `npm run install:all` |
+| "Cannot connect to Ollama" | Run `ollama serve` |
+| "Microphone not working" | Use Chrome, allow permission |
+| "Rate limit exceeded" | Wait 60 seconds |
+| "Database error" | Check Supabase credentials |
 
 ---
 
-## Known Limitations
+## Version History
 
-| Limitation | Current | Future |
-|------------|---------|--------|
-| Browser | Chrome only | Add Whisper |
-| Conversation | Push-to-talk | VAD + continuous |
-| Streaming | Request/response | WebSocket |
-| Ollama | Local only | Cloud option |
+### v3.0.0 (Current)
+- Clean conversation loop architecture
+- Single restart point (utterance.onend)
+- Error recovery with auto-resume
+- Ollama + Mistral support
 
----
+### v2.0.0
+- Supabase authentication
+- Conversation persistence
+- PWA support
 
-## Future Roadmap
-
-### v2.1 - Enhanced Voice
-- [ ] Voice Activity Detection (VAD)
-- [ ] Continuous conversation mode
-- [ ] Interrupt handling
-
-### v2.2 - Cross-Platform
-- [ ] Whisper for Firefox/Safari
-- [ ] Coqui TTS for better voice
-- [ ] Mobile app (Capacitor)
-
-### v2.3 - Cloud Ready
-- [ ] OpenRouter API option
-- [ ] Groq API option
-- [ ] Streaming responses
-
-### v3.0 - Enterprise
-- [ ] User authentication
-- [ ] Multi-model support
-- [ ] Analytics dashboard
-- [ ] Team collaboration
+### v1.0.0
+- Basic voice chat with Mistral
 
 ---
 
@@ -469,11 +340,11 @@ VITE_API_URL=/api
 Built with:
 - [Ollama](https://ollama.com) - Local LLM runtime
 - [Mistral AI](https://mistral.ai) - Language model
-- [Supabase](https://supabase.com) - Database
+- [Supabase](https://supabase.com) - Database & Auth
 - [React](https://react.dev) - UI framework
 - [Vite](https://vitejs.dev) - Build tool
 
 ---
 
-**Report Generated:** April 7, 2026  
-**Project Status:** ✅ Production Ready MVP
+**Report Generated:** April 16, 2026  
+**Project Status:** Production Ready

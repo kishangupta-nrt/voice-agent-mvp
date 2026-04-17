@@ -17,7 +17,10 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.1.5",
-    "jsonwebtoken": "^9.0.2"
+    "jose": "^6.2.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^4.0.1",
+    "resend": "^6.10.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

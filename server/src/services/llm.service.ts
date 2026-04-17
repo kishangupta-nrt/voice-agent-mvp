@@ -2,6 +2,21 @@ import axios, { AxiosResponse } from 'axios';
 import { ENV } from '../config/env';
 import { SYSTEM_PROMPT } from '../config/constants';
 
+interface OllamaRequest {
+  model: string;
+  prompt: string;
+  stream: boolean;
+  options: {
+    temperature: number;
+    num_predict: number;
+  };
+}
+
+interface OllamaResponse {
+  response: string;
+  done: boolean;
+}
+
 interface MistralMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -15,23 +30,11 @@ interface MistralRequest {
 }
 
 interface MistralResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
   choices: Array<{
-    index: number;
     message: {
-      role: string;
       content: string;
     };
-    finish_reason: string;
   }>;
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
 }
 
 const buildPrompt = (history: { role: string; content: string }[], current: string): string => {
@@ -44,32 +47,89 @@ const buildPrompt = (history: { role: string; content: string }[], current: stri
 };
 
 const sanitizeOutput = (text: string): string => {
-  return text.replace(/[<>]/g, '');
+  return text.replace(/[<>]/g, '').trim();
 };
 
 export class LlmService {
-  public async generateResponse(
+  private useOllama(): boolean {
+    return !!ENV.OLLAMA_URL && !ENV.MISTRAL_API_KEY;
+  }
+
+  async generateResponse(
     message: string,
     history: { role: string; content: string }[] = []
   ): Promise<string> {
-    if (!ENV.MISTRAL_API_KEY) {
-      throw new Error('Mistral API key not configured');
+    if (this.useOllama()) {
+      return this.generateWithOllama(message, history);
+    } else if (ENV.MISTRAL_API_KEY) {
+      return this.generateWithMistral(message, history);
+    } else {
+      throw new Error('No LLM provider configured. Set OLLAMA_URL or MISTRAL_API_KEY');
     }
+  }
+
+  private async generateWithOllama(
+    message: string,
+    history: { role: string; content: string }[]
+  ): Promise<string> {
+    const prompt = buildPrompt(history, message);
+
+    const requestData: OllamaRequest = {
+      model: ENV.OLLAMA_MODEL || 'mistral',
+      prompt,
+      stream: false,
+      options: {
+        temperature: 0.7,
+        num_predict: 300,
+      },
+    };
 
     try {
-      const prompt = buildPrompt(history, message);
+      const res: AxiosResponse<OllamaResponse> = await axios.post(
+        `${ENV.OLLAMA_URL}/generate`,
+        requestData,
+        { timeout: 60000 }
+      );
 
-      const messages: MistralMessage[] = [
-        { role: 'system', content: prompt },
-      ];
+      const content = res.data.response;
 
-      const requestData: MistralRequest = {
-        model: ENV.MISTRAL_MODEL,
-        messages,
-        max_tokens: 300,
-        temperature: 0.7,
-      };
+      if (!content) {
+        throw new Error('Empty response from Ollama');
+      }
 
+      return sanitizeOutput(content);
+    } catch (error) {
+      console.error('Ollama Error:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Ollama request timed out. Make sure Ollama is running.');
+        }
+        if (error.code === 'ECONNREFUSED') {
+          throw new Error('Cannot connect to Ollama. Run: ollama serve');
+        }
+      }
+      throw new Error('Ollama service failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  private async generateWithMistral(
+    message: string,
+    history: { role: string; content: string }[]
+  ): Promise<string> {
+    const prompt = buildPrompt(history, message);
+
+    const messages: MistralMessage[] = [
+      { role: 'system', content: prompt },
+    ];
+
+    const requestData: MistralRequest = {
+      model: ENV.MISTRAL_MODEL || 'mistral-small-latest',
+      messages,
+      max_tokens: 300,
+      temperature: 0.7,
+    };
+
+    try {
       const res: AxiosResponse<MistralResponse> = await axios.post(
         ENV.MISTRAL_API_URL,
         requestData,
@@ -85,12 +145,12 @@ export class LlmService {
       const content = res.data.choices[0]?.message?.content;
 
       if (!content) {
-        throw new Error('Empty response from LLM');
+        throw new Error('Empty response from Mistral');
       }
 
-      return sanitizeOutput(content.trim());
+      return sanitizeOutput(content);
     } catch (error) {
-      console.error('LLM Error:', error);
+      console.error('Mistral Error:', error);
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED') {
           throw new Error('Request timed out. Please try again.');
@@ -100,9 +160,6 @@ export class LlmService {
         }
         if (error.response?.status === 429) {
           throw new Error('Rate limit exceeded. Please try again later.');
-        }
-        if (error.response?.data?.error) {
-          throw new Error(error.response.data.error.message || 'API error');
         }
       }
       throw new Error('LLM service failed: ' + (error instanceof Error ? error.message : 'Unknown error'));

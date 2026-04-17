@@ -6,6 +6,8 @@ interface StatusDisplayProps {
   transcript: string;
   response: string;
   error: string | null;
+  interimTranscript?: string;
+  onDismissError?: () => void;
 }
 
 const statusLabels: Record<Status, string> = {
@@ -16,20 +18,29 @@ const statusLabels: Record<Status, string> = {
   error: 'Error occurred',
 };
 
-export function StatusDisplay({ status, transcript, response, error }: StatusDisplayProps) {
+export function StatusDisplay({ status, transcript, response, error, interimTranscript, onDismissError }: StatusDisplayProps) {
   return (
     <div className="status">
       <div className={`status-text ${status !== 'idle' ? 'active' : ''}`}>
         {statusLabels[status]}
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error" onClick={onDismissError} style={{ cursor: onDismissError ? 'pointer' : 'default' }}>
+          {error}
+          {onDismissError && <span style={{ marginLeft: '8px', opacity: 0.7 }}>(tap to dismiss)</span>}
+        </div>
+      )}
 
-      {transcript && status !== 'listening' && (
+      {interimTranscript && (
+        <div className="transcript interim">"{interimTranscript}"</div>
+      )}
+
+      {transcript && !interimTranscript && (
         <div className="transcript">"{transcript}"</div>
       )}
 
-      {response && status !== 'thinking' && (
+      {response && (
         <div className="response">{response}</div>
       )}
     </div>
