@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { ENV } from './config/env';
 import chatRoutes from './routes/chat.routes';
 import authRoutes from './routes/auth.routes';
+import knowledgeRoutes from './routes/knowledge.routes';
 
 const app: Application = express();
 
@@ -31,6 +32,7 @@ app.use(
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({

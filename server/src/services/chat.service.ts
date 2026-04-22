@@ -4,6 +4,7 @@ import { ToolExecutor, ExecutionResult } from './tools/executor';
 import { Customer } from './tools/customer.service';
 import { Intent, detectIntent } from '../knowledge/intents';
 import { conversationManager, ConversationContext } from './conversation-manager';
+import { ragService } from './knowledge/rag.service';
 import { 
   CASUAL_RESPONSES, 
   addCasualPrefix, 
@@ -15,6 +16,7 @@ export interface ChatResult {
   response: string;
   conversationId: string | null;
   requiresAuth?: boolean;
+  usedRag?: boolean;
 }
 
 interface ConversationState {
@@ -22,6 +24,7 @@ interface ConversationState {
   currentIntent: Intent | null;
   collectedSlots: Record<string, string>;
   context: ConversationContext;
+  ragUsedThisTurn: boolean;
 }
 
 const conversationStates = new Map<string, ConversationState>();
@@ -33,7 +36,8 @@ function getOrCreateState(conversationId: string): ConversationState {
       customer: null, 
       currentIntent: null, 
       collectedSlots: {},
-      context: conversationManager.getOrCreate(conversationId)
+      context: conversationManager.getOrCreate(conversationId),
+      ragUsedThisTurn: false,
     };
     conversationStates.set(conversationId, state);
   }
@@ -60,7 +64,7 @@ export class ChatService {
       formatted
     );
     
-    if (Math.random() < 0.15) {
+    if (Math.random() < 0.15 && !state.ragUsedThisTurn) {
       const followUp = conversationManager.getFollowUp(state.context.lastTopic);
       if (followUp) {
         formatted = formatted.trim() + " " + followUp;
@@ -72,6 +76,26 @@ export class ChatService {
 
   private getCasualResponse(key: keyof typeof CASUAL_RESPONSES): string {
     return varyResponse(CASUAL_RESPONSES[key]);
+  }
+
+  private async tryRagQuery(query: string): Promise<string | null> {
+    try {
+      const results = await ragService.search(query, 2);
+      
+      if (results.length === 0 || results[0].score < 0.5) {
+        return null;
+      }
+      
+      const context = ragService.getContext(results);
+      const prompt = ragService.getAnswerWithContext(query, results);
+      
+      const answer = await this.llmService.generateResponse(prompt, []);
+      
+      return answer;
+    } catch (error) {
+      console.error('RAG query failed:', error);
+      return null;
+    }
   }
 
   async processMessage(
@@ -88,6 +112,8 @@ export class ChatService {
     }
 
     const state = getOrCreateState(convId);
+    state.ragUsedThisTurn = false;
+    
     const history = await this.chatRepository.getConversationHistory(convId, 5);
     const historyMessages: { role: string; content: string }[] = history.map((m: Message) => ({
       role: m.role,
@@ -103,6 +129,7 @@ export class ChatService {
     );
 
     let response = intentResult.response;
+    let usedRag = false;
     
     if (response) {
       response = this.formatResponse(response, state);
@@ -112,14 +139,24 @@ export class ChatService {
         conversationManager.updateContext(convId, intentResult.intent?.id || undefined, topic);
       }
     } else {
-      if (state.context.turnCount > 0) {
-        response = this.getCasualResponse('clarification');
+      if (state.context.turnCount === 0) {
+        response = this.getCasualResponse('greeting');
+      } else {
+        const ragAnswer = await this.tryRagQuery(message);
+        
+        if (ragAnswer) {
+          response = this.formatResponse(ragAnswer, state);
+          usedRag = true;
+          state.ragUsedThisTurn = true;
+        } else {
+          response = this.getCasualResponse('clarification');
+        }
       }
     }
 
     const requiresAuth = intentResult.requiresAuth;
 
-    if (response) {
+    if (response && !usedRag) {
       const durationMs = Date.now() - startTime;
       await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
       
@@ -129,6 +166,13 @@ export class ChatService {
       }
 
       return { response, conversationId: convId, requiresAuth: requiresAuth };
+    }
+
+    if (usedRag && response) {
+      const durationMs = Date.now() - startTime;
+      await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
+      
+      return { response, conversationId: convId, requiresAuth: false, usedRag: true };
     }
 
     const llmResponse = await this.llmService.generateResponse(message, historyMessages);
