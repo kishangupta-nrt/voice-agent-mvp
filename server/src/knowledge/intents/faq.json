@@ -1,0 +1,84 @@
+{
+  "intents": [
+    {
+      "id": "check_order",
+      "name": "Check Order Status",
+      "triggers": ["order status", "where is my order", "track my order", "order #", "delivery", "shipped", "arrived", "when will my order", "my package"],
+      "priority": 90,
+      "requiresAuth": true,
+      "slots": ["order_number"],
+      "slotPrompts": {
+        "order_number": "What's the order number?"
+      },
+      "response": "Let me look that up. What's the order number?",
+      "tool": "lookup_order"
+    },
+    {
+      "id": "cancel_order",
+      "name": "Cancel Order",
+      "triggers": ["cancel", "cancel my order", "cancel order", "want to cancel"],
+      "priority": 85,
+      "requiresAuth": true,
+      "slots": ["order_number"],
+      "slotPrompts": {
+        "order_number": "Which order?"
+      },
+      "response": "No problem. Which order do you want to cancel?",
+      "tool": "cancel_order"
+    },
+    {
+      "id": "return_item",
+      "name": "Return Item",
+      "triggers": ["return", "return my", "send back", "want to return", "exchange", "refund"],
+      "priority": 85,
+      "requiresAuth": true,
+      "response": "Got it. What item do you want to return?",
+      "tool": "create_return"
+    },
+    {
+      "id": "create_ticket",
+      "name": "Create Support Ticket",
+      "triggers": ["file a ticket", "report an issue", "complaint", "problem", "not happy", "something wrong"],
+      "priority": 75,
+      "requiresAuth": true,
+      "slots": ["issue_type", "description"],
+      "slotPrompts": {
+        "issue_type": "What's the issue about?",
+        "description": "Can you tell me what happened?"
+      },
+      "response": "Oh no, I'm sorry to hear that. What's going on?",
+      "tool": "create_ticket"
+    },
+    {
+      "id": "schedule_callback",
+      "name": "Schedule Callback",
+      "triggers": ["call me back", "callback", "schedule a call", "talk to someone", "need to talk"],
+      "priority": 75,
+      "requiresAuth": true,
+      "slots": ["preferred_time"],
+      "slotPrompts": {
+        "preferred_time": "What time works best?"
+      },
+      "response": "Sure. What time works best for you?",
+      "tool": "schedule_callback"
+    },
+    {
+      "id": "pricing",
+      "name": "Pricing Inquiry",
+      "triggers": ["price", "cost", "how much", "pricing", "fee", "charge"],
+      "priority": 70,
+      "requiresAuth": false,
+      "response": "I can email you the pricing info. Want me to send that over?",
+      "tool": "send_pricing"
+    },
+    {
+      "id": "hours_inquiry",
+      "name": "Hours Inquiry",
+      "triggers": ["hours", "open", "close", "when are you", "what time"],
+      "priority": 60,
+      "requiresAuth": false,
+      "response": "We're here Monday to Friday, 9 to 5. Anything else?",
+      "followUp": null
+    }
+  ]
+}

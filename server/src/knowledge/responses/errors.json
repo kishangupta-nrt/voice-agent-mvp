@@ -1,0 +1,9 @@
+{
+  "errors": [
+    { "key": "generic", "responses": ["Oops, something went wrong. Try again?", "Sorry, didn't catch that. Say it again?", "What was that?"] },
+    { "key": "not_understood", "responses": ["What?", "Sorry, say that again?", "Can you repeat that?"] },
+    { "key": "auth_required", "responses": ["Need your phone number first. What's on your account?", "What's your number so I can look you up?"] },
+    { "key": "system_error", "responses": ["Sorry, we're having some issues. Try again in a sec?", "Hang on, having some tech trouble.", "One sec, something's acting up."] },
+    { "key": "network_error", "responses": ["Connection hiccup. Try again?", "Sorry, got disconnected. Again?", "Network's being weird. One sec."] }
+  ]
+}

@@ -15,6 +15,53 @@ interface UseVoiceReturn {
 
 const SILENCE_DELAY = 700;
 
+const selectBestVoice = (): SpeechSynthesisVoice | null => {
+  if (!('speechSynthesis' in window)) return null;
+  
+  const getVoices = () => window.speechSynthesis.getVoices();
+  let voices = getVoices();
+  
+  if (voices.length === 0) {
+    return new Promise<SpeechSynthesisVoice | null>((resolve) => {
+      window.speechSynthesis.onvoiceschanged = () => {
+        voices = getVoices();
+        resolve(selectFromList(voices));
+      };
+      setTimeout(() => resolve(selectFromList(getVoices())), 100);
+    }) as any;
+  }
+  
+  return selectFromList(voices);
+};
+
+const selectFromList = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+  if (!voices.length) return null;
+  
+  const preferred = [
+    'Microsoft Ava',
+    'Microsoft Zira',
+    'Samantha',
+    'Google UK English Female',
+    'Google US English',
+    'English United Kingdom Female',
+    'English US Female',
+  ];
+  
+  for (const name of preferred) {
+    const found = voices.find(v => v.name.includes(name));
+    if (found) return found;
+  }
+  
+  const female = voices.find(v => 
+    v.name.toLowerCase().includes('female') || 
+    v.name.toLowerCase().includes('woman') ||
+    v.name.toLowerCase().includes('zira') ||
+    v.name.toLowerCase().includes('ava')
+  );
+  
+  return female || voices[0];
+};
+
 export function useVoice(): UseVoiceReturn {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -223,6 +270,11 @@ export function useVoice(): UseVoiceReturn {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1;
       utterance.pitch = 1;
+      
+      const voice = selectBestVoice();
+      if (voice) {
+        utterance.voice = voice;
+      }
 
       utterance.onend = () => {
         if (isActiveRef.current) {

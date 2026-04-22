@@ -1,0 +1,9 @@
+{
+  "acknowledgments": [
+    { "key": "heard", "responses": ["Got it.", "Cool.", "Okay.", "Sure.", "I see."] },
+    { "key": "thanks", "responses": ["No problem.", "Sure thing.", "You got it.", "Anytime."] },
+    { "key": "hold", "responses": ["Hold on.", "Give me a sec.", "Just a sec.", "Let me check."] },
+    { "key": "searching", "responses": ["Looking it up.", "Let me find that.", "Checking now."] },
+    { "key": "processing", "responses": ["Working on it.", "Just a moment.", "One sec."] }
+  ]
+}

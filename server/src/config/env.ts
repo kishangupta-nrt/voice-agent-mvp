@@ -15,6 +15,9 @@ export const ENV = {
   OLLAMA_URL: process.env.OLLAMA_URL || 'http://localhost:11434/api/generate',
   OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'mistral',
   
+  // Piper TTS (local, better voice quality)
+  PIPER_URL: process.env.PIPER_URL || 'http://localhost:5000',
+  
   // Mistral API (cloud, optional fallback)
   MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || '',
   MISTRAL_MODEL: process.env.MISTRAL_MODEL || 'mistral-small-latest',

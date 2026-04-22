@@ -1,0 +1,31 @@
+{
+  "intents": [
+    {
+      "id": "goodbye",
+      "name": "Goodbye",
+      "triggers": ["bye", "goodbye", "thanks", "thank you", "that's all", "no thanks", "end call", "hang up"],
+      "priority": 100,
+      "requiresAuth": false,
+      "response": "Thanks for calling. Talk to you later!",
+      "followUp": null
+    },
+    {
+      "id": "no_help",
+      "name": "No More Help Needed",
+      "triggers": ["no", "that's it", "nothing else", "all done", "done"],
+      "priority": 95,
+      "requiresAuth": false,
+      "response": "Cool. Anything else?",
+      "followUp": null
+    },
+    {
+      "id": "repeat",
+      "name": "Repeat Response",
+      "triggers": ["again", "repeat", "say again", "didn't hear", "what was that"],
+      "priority": 90,
+      "requiresAuth": false,
+      "response": "Sorry, I said...",
+      "followUp": null
+    }
+  ]
+}

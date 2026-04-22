@@ -1,0 +1,49 @@
+{
+  "intents": [
+    {
+      "id": "greeting",
+      "name": "Greeting",
+      "triggers": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "who is this", "is anyone there"],
+      "priority": 100,
+      "requiresAuth": false,
+      "response": "Thanks for calling. What can I help you with?",
+      "followUp": null
+    },
+    {
+      "id": "verify_identity",
+      "name": "Verify Identity",
+      "triggers": ["it's me", "this is", "my account", "my order", "verify", "find my account"],
+      "priority": 95,
+      "requiresAuth": false,
+      "response": "Sure, what's your phone number so I can pull up your account?",
+      "followUp": "collect_phone"
+    },
+    {
+      "id": "help",
+      "name": "Request Help",
+      "triggers": ["help", "need help", "support", "can you help", "i need", "i want"],
+      "priority": 80,
+      "requiresAuth": false,
+      "response": "Sure thing, what do you need help with?",
+      "followUp": null
+    },
+    {
+      "id": "hours",
+      "name": "Business Hours",
+      "triggers": ["hours", "open", "close", "when are you", "what time"],
+      "priority": 70,
+      "requiresAuth": false,
+      "response": "We're here Monday to Friday, 9 to 5. What do you need?",
+      "followUp": null
+    },
+    {
+      "id": "transfer",
+      "name": "Transfer to Agent",
+      "triggers": ["talk to a person", "talk to someone", "human", "agent", "representative", "manager"],
+      "priority": 50,
+      "requiresAuth": true,
+      "response": "Let me get someone to help you. Hang on just a sec.",
+      "followUp": "escalate"
+    }
+  ]
+}

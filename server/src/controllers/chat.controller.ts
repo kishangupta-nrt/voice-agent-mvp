@@ -38,7 +38,11 @@ export class ChatController {
         conversationId
       );
 
-      return res.status(200).json(result);
+      return res.status(200).json({
+        response: result.response,
+        conversationId: result.conversationId,
+        requiresAuth: result.requiresAuth || false,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Internal server error';
@@ -76,5 +80,13 @@ export class ChatController {
         timestamp: new Date().toISOString(),
       });
     }
+  }
+
+  public async verifyCustomer(conversationId: string, phone: string): Promise<{ success: boolean; message: string; customer?: any }> {
+    return this.chatService.verifyCustomer(conversationId, phone);
+  }
+
+  public setCustomer(conversationId: string, customer: any): void {
+    this.chatService.setCustomer(conversationId, customer);
   }
 }

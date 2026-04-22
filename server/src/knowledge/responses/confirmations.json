@@ -1,0 +1,11 @@
+{
+  "confirmations": [
+    { "key": "ticket_created", "responses": ["Got it. I created a ticket - you'll get an email shortly.", "Done. Someone will reach out soon.", "Okay, ticket is in. We'll be in touch."] },
+    { "key": "callback_scheduled", "responses": ["All set. We'll call you at that time.", "Done. Expect a call then.", "Booked. We'll call you at {time}."] },
+    { "key": "email_sent", "responses": ["Sent! Check your inbox.", "Done. Check your email.", "Got it. Emails on the way."] },
+    { "key": "order_found", "responses": ["Found it. Your order is {status}.", "Your order is {status}. Should arrive by {date}."] },
+    { "key": "order_not_found", "responses": ["Hmm, can't find that order. Can you check the number?", "That number doesn't look right. Want to try again?", "I don't see that one. What's the order number?"] },
+    { "key": "customer_found", "responses": ["Hey {name}! What do you need?", "Gotcha {name}. What can I do?", "Hi {name}! How can I help?"] },
+    { "key": "customer_not_found", "responses": ["Don't have that one on file. Want me to set you up?", "That's not in our system. Can I create an account?", "Hmm, haven't seen that number. Want to make an account?"] }
+  ]
+}
