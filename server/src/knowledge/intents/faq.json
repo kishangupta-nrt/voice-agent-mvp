@@ -1,83 +1,116 @@
 {
   "intents": [
     {
-      "id": "check_order",
-      "name": "Check Order Status",
-      "triggers": ["order status", "where is my order", "track my order", "order #", "delivery", "shipped", "arrived", "when will my order", "my package"],
+      "id": "website_inquiry",
+      "name": "Website Project Inquiry",
+      "triggers": ["website", "web development", "landing page", "web app", "ecommerce site", "e-commerce", "online store", "banwani hai website", "website chahiye", "web site"],
+      "priority": 95,
+      "requiresAuth": false,
+      "slots": ["project_type", "features"],
+      "slotPrompts": {
+        "project_type": "Kis type ki website chahiye? Landing page, business site, ya web app?",
+        "features": "Kya features chahiye? Jaise login, payment, dashboard?"
+      },
+      "response": "Sure! What kind of website are you looking for? Landing page, business site, or a full web app?",
+      "followUp": "ask_features"
+    },
+    {
+      "id": "app_inquiry",
+      "name": "Mobile App Project Inquiry",
+      "triggers": ["mobile app", "android app", "ios app", "app banwani", "app chahiye", "mobile application", "react native", "flutter app"],
+      "priority": 95,
+      "requiresAuth": false,
+      "slots": ["platform", "features"],
+      "slotPrompts": {
+        "platform": "Android, iOS, ya dono platforms pe chahiye?",
+        "features": "App mein kya features chahiye?"
+      },
+      "response": "Great! Are you looking for an Android app, iOS app, or both?",
+      "followUp": "ask_features"
+    },
+    {
+      "id": "ai_inquiry",
+      "name": "AI Solution Inquiry",
+      "triggers": ["ai", "artificial intelligence", "chatbot", "voice agent", "automation", "machine learning", "ai solution", "ai banwana", "chatbot chahiye", "automation chahiye"],
+      "priority": 95,
+      "requiresAuth": false,
+      "slots": ["use_case"],
+      "slotPrompts": {
+        "use_case": "AI ka use case kya hai? Customer support, sales, ya kuch aur?"
+      },
+      "response": "Interesting! What kind of AI solution are you thinking about? Chatbot, voice agent, or automation?",
+      "followUp": "ask_use_case"
+    },
+    {
+      "id": "pricing_inquiry",
+      "name": "Pricing Inquiry",
+      "triggers": ["price", "cost", "how much", "pricing", "kitna kharcha", "budget", "rate", "fee", "charge", "cost kya", "price kya"],
+      "priority": 85,
+      "requiresAuth": false,
+      "response": "It depends on the project. A simple website starts around ₹25K, and apps from ₹1L. Want to share more details so I can give a better estimate?",
+      "followUp": "ask_project_details"
+    },
+    {
+      "id": "timeline_inquiry",
+      "name": "Timeline Inquiry",
+      "triggers": ["how long", "timeline", "kitna time", "deadline", "when will it be ready", "delivery time", "time lagega"],
+      "priority": 80,
+      "requiresAuth": false,
+      "response": "Depends on complexity. A landing page takes 1-2 weeks, while a full app can take 6-12 weeks. What are you building?",
+      "followUp": "ask_project_type"
+    },
+    {
+      "id": "tech_stack_inquiry",
+      "name": "Tech Stack Inquiry",
+      "triggers": ["technology", "tech stack", "which technology", "kaunsi technology", "react", "next.js", "supabase", "what do you use"],
+      "priority": 75,
+      "requiresAuth": false,
+      "response": "We use React, Next.js, React Native, Supabase, and AI tools like GPT-4. What tech are you comfortable with?",
+      "followUp": null
+    },
+    {
+      "id": "collect_contact",
+      "name": "Collect Contact Info",
+      "triggers": ["contact", "phone number", "email", "reach you", "callback", "call me", "details bhejo", "contact karna"],
       "priority": 90,
-      "requiresAuth": true,
-      "slots": ["order_number"],
+      "requiresAuth": false,
+      "slots": ["phone", "email"],
       "slotPrompts": {
-        "order_number": "What's the order number?"
+        "phone": "What's your phone number?",
+        "email": "And your email address?"
       },
-      "response": "Let me look that up. What's the order number?",
-      "tool": "lookup_order"
+      "response": "Sure! Let me get your phone number so I can send the details.",
+      "followUp": "collect_email"
     },
     {
-      "id": "cancel_order",
-      "name": "Cancel Order",
-      "triggers": ["cancel", "cancel my order", "cancel order", "want to cancel"],
+      "id": "schedule_meeting",
+      "name": "Schedule Meeting",
+      "triggers": ["meeting", "call", "discussion", "baat karni", "talk", "discuss project", "consultation", "free consultation"],
       "priority": 85,
-      "requiresAuth": true,
-      "slots": ["order_number"],
-      "slotPrompts": {
-        "order_number": "Which order?"
-      },
-      "response": "No problem. Which order do you want to cancel?",
-      "tool": "cancel_order"
-    },
-    {
-      "id": "return_item",
-      "name": "Return Item",
-      "triggers": ["return", "return my", "send back", "want to return", "exchange", "refund"],
-      "priority": 85,
-      "requiresAuth": true,
-      "response": "Got it. What item do you want to return?",
-      "tool": "create_return"
-    },
-    {
-      "id": "create_ticket",
-      "name": "Create Support Ticket",
-      "triggers": ["file a ticket", "report an issue", "complaint", "problem", "not happy", "something wrong"],
-      "priority": 75,
-      "requiresAuth": true,
-      "slots": ["issue_type", "description"],
-      "slotPrompts": {
-        "issue_type": "What's the issue about?",
-        "description": "Can you tell me what happened?"
-      },
-      "response": "Oh no, I'm sorry to hear that. What's going on?",
-      "tool": "create_ticket"
-    },
-    {
-      "id": "schedule_callback",
-      "name": "Schedule Callback",
-      "triggers": ["call me back", "callback", "schedule a call", "talk to someone", "need to talk"],
-      "priority": 75,
-      "requiresAuth": true,
+      "requiresAuth": false,
       "slots": ["preferred_time"],
       "slotPrompts": {
-        "preferred_time": "What time works best?"
+        "preferred_time": "What day and time works for you?"
       },
-      "response": "Sure. What time works best for you?",
-      "tool": "schedule_callback"
+      "response": "I'd love to discuss your project! What day and time works best?",
+      "followUp": null
     },
     {
-      "id": "pricing",
-      "name": "Pricing Inquiry",
-      "triggers": ["price", "cost", "how much", "pricing", "fee", "charge"],
+      "id": "portfolio_inquiry",
+      "name": "Portfolio / Past Work Inquiry",
+      "triggers": ["portfolio", "past work", "previous projects", "examples", "sample", "dikhao", "work dikhao", "examples do"],
       "priority": 70,
       "requiresAuth": false,
-      "response": "I can email you the pricing info. Want me to send that over?",
-      "tool": "send_pricing"
+      "response": "We've built websites, apps, and AI solutions for various clients. Want me to share some examples over WhatsApp or email?",
+      "followUp": "collect_contact"
     },
     {
-      "id": "hours_inquiry",
-      "name": "Hours Inquiry",
-      "triggers": ["hours", "open", "close", "when are you", "what time"],
-      "priority": 60,
+      "id": "maintenance_inquiry",
+      "name": "Maintenance & Support Inquiry",
+      "triggers": ["maintenance", "support", "after delivery", "baad mein", "updates", "bug fix", "support chahiye"],
+      "priority": 65,
       "requiresAuth": false,
-      "response": "We're here Monday to Friday, 9 to 5. Anything else?",
+      "response": "We offer monthly maintenance plans starting at ₹10K/month. Includes bug fixes, updates, and monitoring.",
       "followUp": null
     }
   ]

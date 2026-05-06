@@ -3,47 +3,38 @@
     {
       "id": "greeting",
       "name": "Greeting",
-      "triggers": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "who is this", "is anyone there"],
+      "triggers": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "namaste", "namaskar", "kaise ho", "hi there"],
       "priority": 100,
       "requiresAuth": false,
-      "response": "Thanks for calling. What can I help you with?",
+      "response": "Hi there! I'm here to help you with your project. What are you looking to build?",
       "followUp": null
     },
     {
-      "id": "verify_identity",
-      "name": "Verify Identity",
-      "triggers": ["it's me", "this is", "my account", "my order", "verify", "find my account"],
-      "priority": 95,
+      "id": "who_are_you",
+      "name": "Identity Inquiry",
+      "triggers": ["who is this", "who are you", "kaun ho", "tumhara naam", "your name", "kya naam hai"],
+      "priority": 98,
       "requiresAuth": false,
-      "response": "Sure, what's your phone number so I can pull up your account?",
-      "followUp": "collect_phone"
+      "response": "I'm Aisha, a project consultant. I'll help you figure out what you need and connect you with the right team.",
+      "followUp": "ask_project_type"
     },
     {
       "id": "help",
       "name": "Request Help",
-      "triggers": ["help", "need help", "support", "can you help", "i need", "i want"],
+      "triggers": ["help", "need help", "can you help", "mujhe help chahiye", "madad", "guidance", "consultation", "suggest karo"],
+      "priority": 85,
+      "requiresAuth": false,
+      "response": "Of course! Tell me a bit about what you're trying to build, and I'll guide you through it.",
+      "followUp": null
+    },
+    {
+      "id": "services_overview",
+      "name": "Services Overview",
+      "triggers": ["what do you do", "services", "what services", "kya karte ho", "offerings", "what can you build"],
       "priority": 80,
       "requiresAuth": false,
-      "response": "Sure thing, what do you need help with?",
+      "response": "We build websites, mobile apps, and AI solutions. Everything from landing pages to full-stack apps and custom chatbots. What interests you?",
       "followUp": null
-    },
-    {
-      "id": "hours",
-      "name": "Business Hours",
-      "triggers": ["hours", "open", "close", "when are you", "what time"],
-      "priority": 70,
-      "requiresAuth": false,
-      "response": "We're here Monday to Friday, 9 to 5. What do you need?",
-      "followUp": null
-    },
-    {
-      "id": "transfer",
-      "name": "Transfer to Agent",
-      "triggers": ["talk to a person", "talk to someone", "human", "agent", "representative", "manager"],
-      "priority": 50,
-      "requiresAuth": true,
-      "response": "Let me get someone to help you. Hang on just a sec.",
-      "followUp": "escalate"
     }
   ]
 }

@@ -1,15 +1,19 @@
 import { LlmService } from './llm.service';
 import { ChatRepository, Message } from '../repositories/chat.repository';
 import { ToolExecutor, ExecutionResult } from './tools/executor';
-import { Customer } from './tools/customer.service';
+import type { Customer } from './tools/customer.service';
 import { Intent, detectIntent } from '../knowledge/intents';
 import { conversationManager, ConversationContext } from './conversation-manager';
 import { ragService } from './knowledge/rag.service';
-import { 
-  CASUAL_RESPONSES, 
-  addCasualPrefix, 
+import { memoryService } from './memory.service';
+import { detectConversationStyle, ConversationStyle } from './conversation-style';
+import { knowledgeService } from './knowledge/knowledge.service';
+import { leadTracker, LeadState } from './lead-tracker';
+import {
+  CASUAL_RESPONSES,
+  addCasualPrefix,
   varyResponse,
-  personalizeForCustomer 
+  personalizeForCustomer
 } from '../knowledge/response-modifiers';
 
 export interface ChatResult {
@@ -17,6 +21,8 @@ export interface ChatResult {
   conversationId: string | null;
   requiresAuth?: boolean;
   usedRag?: boolean;
+  style?: ConversationStyle;
+  language?: string;
 }
 
 interface ConversationState {
@@ -28,25 +34,87 @@ interface ConversationState {
 }
 
 const conversationStates = new Map<string, ConversationState>();
+const STATE_TTL_MS = 30 * 60 * 1000;
+const STATE_MAX_SIZE = 500;
+const STATE_EVICTION_INTERVAL_MS = 5 * 60 * 1000;
+let lastStateEviction = 0;
+
+interface TimedState {
+  state: ConversationState;
+  lastAccessed: number;
+}
+
+const timedStates = new Map<string, TimedState>();
+
+function evictExpiredStates(): void {
+  const now = Date.now();
+  for (const [key, timed] of timedStates.entries()) {
+    if (now - timed.lastAccessed > STATE_TTL_MS) {
+      timedStates.delete(key);
+      conversationStates.delete(key);
+      conversationManager.clearContext(key);
+    }
+  }
+}
+
+function enforceStateMaxSize(): void {
+  if (timedStates.size > STATE_MAX_SIZE) {
+    const sorted = Array.from(timedStates.entries())
+      .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+    const toRemove = timedStates.size - STATE_MAX_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      const key = sorted[i][0];
+      timedStates.delete(key);
+      conversationStates.delete(key);
+      conversationManager.clearContext(key);
+    }
+  }
+}
 
 function getOrCreateState(conversationId: string): ConversationState {
-  let state = conversationStates.get(conversationId);
-  if (!state) {
-    state = { 
-      customer: null, 
-      currentIntent: null, 
+  const now = Date.now();
+
+  if (now - lastStateEviction > STATE_EVICTION_INTERVAL_MS) {
+    evictExpiredStates();
+    enforceStateMaxSize();
+    lastStateEviction = now;
+  }
+
+  let timed = timedStates.get(conversationId);
+  if (!timed) {
+    const state: ConversationState = {
+      customer: null,
+      currentIntent: null,
       collectedSlots: {},
       context: conversationManager.getOrCreate(conversationId),
       ragUsedThisTurn: false,
     };
+    timedStates.set(conversationId, { state, lastAccessed: now });
     conversationStates.set(conversationId, state);
+    return state;
   }
-  return state;
+
+  timed.lastAccessed = now;
+  timed.state.context = conversationManager.getOrCreate(conversationId);
+  return timed.state;
 }
 
 function clearConversationState(conversationId: string): void {
+  timedStates.delete(conversationId);
   conversationStates.delete(conversationId);
   conversationManager.clearContext(conversationId);
+  leadTracker.clear(conversationId);
+}
+
+function toHistoryMessages(messages: Message[]): { role: string; content: string }[] {
+  return messages.map(m => ({ role: m.role, content: m.content }));
+}
+
+interface LlmPromptLayers {
+  memoryContext?: string;
+  leadContext?: string;
+  knowledgeContext?: string;
+  style?: string;
 }
 
 export class ChatService {
@@ -54,23 +122,29 @@ export class ChatService {
   private chatRepository = new ChatRepository();
   private toolExecutor = new ToolExecutor();
 
-  private formatResponse(response: string, state: ConversationState): string {
+  constructor() {
+    knowledgeService.loadDocuments();
+  }
+
+  private formatResponse(response: string, state: ConversationState, style: ConversationStyle): string {
     let formatted = response;
-    
-    formatted = addCasualPrefix(formatted);
-    
+
+    if (style === 'english') {
+      formatted = addCasualPrefix(formatted);
+    }
+
     formatted = personalizeForCustomer(
       state.context.customer?.name || null,
       formatted
     );
-    
+
     if (Math.random() < 0.15 && !state.ragUsedThisTurn) {
       const followUp = conversationManager.getFollowUp(state.context.lastTopic);
       if (followUp) {
         formatted = formatted.trim() + " " + followUp;
       }
     }
-    
+
     return formatted;
   }
 
@@ -78,32 +152,45 @@ export class ChatService {
     return varyResponse(CASUAL_RESPONSES[key]);
   }
 
-  private async tryRagQuery(query: string): Promise<string | null> {
+  private async tryRagQuery(query: string, style: ConversationStyle): Promise<string | null> {
     try {
       const results = await ragService.search(query, 2);
-      
+
       if (results.length === 0 || results[0].score < 0.5) {
         return null;
       }
-      
+
       const context = ragService.getContext(results);
       const prompt = ragService.getAnswerWithContext(query, results);
-      
-      const answer = await this.llmService.generateResponse(prompt, []);
-      
+
+      const answer = await this.llmService.generateResponse(prompt, [], { style });
+
       return answer;
     } catch (error) {
-      console.error('RAG query failed:', error);
       return null;
     }
+  }
+
+  private async saveAssistantMessage(
+    convId: string,
+    response: string,
+    userId: string,
+    startTime: number
+  ): Promise<void> {
+    const durationMs = Date.now() - startTime;
+    await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
   }
 
   async processMessage(
     message: string,
     userId: string,
-    conversationId?: string
+    conversationId?: string,
+    language?: string
   ): Promise<ChatResult> {
     const startTime = Date.now();
+    const styleResult = detectConversationStyle(message);
+    const style = styleResult.style;
+    const languageCode = language || styleResult.language;
 
     let convId = conversationId || (await this.chatRepository.createConversation(userId));
 
@@ -113,86 +200,129 @@ export class ChatService {
 
     const state = getOrCreateState(convId);
     state.ragUsedThisTurn = false;
-    
+
     const history = await this.chatRepository.getConversationHistory(convId, 5);
-    const historyMessages: { role: string; content: string }[] = history.map((m: Message) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const historyMessages = toHistoryMessages(history);
+
+    const memoryContext = await memoryService.getContextForPrompt(userId);
 
     await this.chatRepository.saveMessage(convId, 'user', message, userId);
 
-    const intentResult = await this.processWithKnowledge(
+    await memoryService.updateCommunicationStyle(userId, message);
+
+    const intent = detectIntent(message);
+    if (intent) {
+      state.currentIntent = intent;
+    }
+
+    leadTracker.update(convId, message, intent?.id);
+    if (style !== 'english') {
+      leadTracker.setLanguage(convId, languageCode);
+    }
+
+    const leadState = leadTracker.getState(convId);
+    const leadContext = leadState ? leadTracker.formatForPrompt(leadState) : undefined;
+
+    const knowledgeContext = intent
+      ? knowledgeService.getKnowledgeForIntent(intent.id)
+      : '';
+
+    const intentResult = await this.processWithKnownIntent(
       message,
       state,
-      historyMessages
+      historyMessages,
+      memoryContext,
+      style,
+      leadContext,
+      knowledgeContext
     );
 
     let response = intentResult.response;
     let usedRag = false;
-    
+
     if (response) {
-      response = this.formatResponse(response, state);
-      
+      response = this.formatResponse(response, state, style);
+
       const topic = conversationManager.detectTopic(message);
       if (topic) {
-        conversationManager.updateContext(convId, intentResult.intent?.id || undefined, topic);
+        conversationManager.updateContext(convId, intent?.id || undefined, topic);
       }
     } else {
-      if (state.context.turnCount === 0) {
-        response = this.getCasualResponse('greeting');
+      const ragAnswer = await this.tryRagQuery(message, style);
+
+      if (ragAnswer) {
+        response = this.formatResponse(ragAnswer, state, style);
+        usedRag = true;
+        state.ragUsedThisTurn = true;
       } else {
-        const ragAnswer = await this.tryRagQuery(message);
-        
-        if (ragAnswer) {
-          response = this.formatResponse(ragAnswer, state);
-          usedRag = true;
-          state.ragUsedThisTurn = true;
-        } else {
-          response = this.getCasualResponse('clarification');
+        const llmAnswer = await this.llmService.generateResponse(message, historyMessages, {
+          memoryContext,
+          leadContext,
+          knowledgeContext: knowledgeContext || undefined,
+          style,
+        });
+        if (llmAnswer) {
+          response = this.formatResponse(llmAnswer, state, style);
         }
       }
     }
 
     const requiresAuth = intentResult.requiresAuth;
 
-    if (response && !usedRag) {
-      const durationMs = Date.now() - startTime;
-      await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
-      
+    if (response) {
+      await this.saveAssistantMessage(convId, response, userId, startTime);
+
       if (intentResult.customer) {
         state.customer = intentResult.customer;
         state.context.customer = intentResult.customer;
       }
 
-      return { response, conversationId: convId, requiresAuth: requiresAuth };
+      return { response, conversationId: convId, requiresAuth: requiresAuth, usedRag, style, language: languageCode };
     }
 
-    if (usedRag && response) {
-      const durationMs = Date.now() - startTime;
-      await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
-      
-      return { response, conversationId: convId, requiresAuth: false, usedRag: true };
-    }
+    const llmResponse = await this.llmService.generateResponse(message, historyMessages, {
+      memoryContext,
+      leadContext,
+      knowledgeContext: knowledgeContext || undefined,
+      style,
+    });
+    const formattedResponse = this.formatResponse(llmResponse, state, style);
 
-    const llmResponse = await this.llmService.generateResponse(message, historyMessages);
-    const durationMs = Date.now() - startTime;
-    await this.chatRepository.saveMessage(convId, 'assistant', llmResponse, userId, durationMs);
+    await this.saveAssistantMessage(convId, formattedResponse, userId, startTime);
 
-    return { response: llmResponse, conversationId: convId, requiresAuth: false };
+    return { response: formattedResponse, conversationId: convId, requiresAuth: false, style, language: languageCode };
   }
 
-  private async processWithKnowledge(
+  private async processWithKnownIntent(
     message: string,
     state: ConversationState,
-    history: { role: string; content: string }[]
+    history: { role: string; content: string }[],
+    memoryContext?: string,
+    style?: ConversationStyle,
+    leadContext?: string,
+    knowledgeContext?: string
   ): Promise<ExecutionResult> {
     const intent = detectIntent(message);
 
     if (!intent) {
-      if (state.context.turnCount === 0) {
+      try {
+        const response = await this.llmService.generateResponse(message, history, {
+          memoryContext,
+          leadContext,
+          knowledgeContext,
+          style,
+        });
         return {
-          response: this.getCasualResponse('greeting'),
+          response,
+          intent: null,
+          customer: state.customer || undefined,
+          requiresAuth: false,
+          requiresSlots: [],
+          slotValues: {},
+        };
+      } catch (error) {
+        return {
+          response: '',
           intent: null,
           customer: state.customer || undefined,
           requiresAuth: false,
@@ -200,15 +330,6 @@ export class ChatService {
           slotValues: {},
         };
       }
-      
-      return {
-        response: '',
-        intent: null,
-        customer: state.customer || undefined,
-        requiresAuth: false,
-        requiresSlots: [],
-        slotValues: {},
-      };
     }
 
     if (intent.requiresAuth && !state.customer) {
@@ -223,12 +344,13 @@ export class ChatService {
     }
 
     if (intent.tool) {
-      const result = await this.toolExecutor.executeIntent(
+      const result = await this.toolExecutor.executeWithIntent(
         message,
+        intent,
         state.collectedSlots,
         state.customer || undefined
       );
-      
+
       if (result.customer) {
         state.customer = result.customer;
       }
@@ -252,32 +374,32 @@ export class ChatService {
     const state = getOrCreateState(conversationId);
 
     const customer = await customerService.findByPhone(phone);
-    
+
     if (!customer) {
       const responses = [
         "Don't have that one. Want me to set you up?",
         "That's not in our system. New account?",
         "Haven't seen that number. Create one?",
       ];
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: varyResponse(responses)
       };
     }
 
     state.customer = customer;
     conversationManager.setCustomer(conversationId, customer);
-    
+
     const greetings = [
       `Hey ${customer.name || 'there'}! What do you need?`,
       `Gotcha ${customer.name || 'there'}. What's up?`,
       `Hey ${customer.name || 'there'}! How can I help?`,
     ];
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: varyResponse(greetings),
-      customer 
+      customer
     };
   }
 
@@ -297,5 +419,23 @@ export class ChatService {
 
   async healthCheck() {
     return this.chatRepository.healthCheck();
+  }
+
+  async endConversation(conversationId: string, userId: string): Promise<void> {
+    const history = await this.chatRepository.getConversationHistory(conversationId, 50);
+    const messages = toHistoryMessages(history);
+
+    if (messages.length < 2) {
+      clearConversationState(conversationId);
+      return;
+    }
+
+    await memoryService.processEndOfConversation(conversationId, userId, messages);
+
+    clearConversationState(conversationId);
+  }
+
+  getLeadState(conversationId: string): LeadState | null {
+    return leadTracker.getState(conversationId);
   }
 }

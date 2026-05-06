@@ -3,28 +3,28 @@
     {
       "id": "goodbye",
       "name": "Goodbye",
-      "triggers": ["bye", "goodbye", "thanks", "thank you", "that's all", "no thanks", "end call", "hang up"],
+      "triggers": ["bye", "goodbye", "thanks", "thank you", "that's all", "end call", "hang up", "shukriya", "dhanyavaad", "alvida"],
       "priority": 100,
       "requiresAuth": false,
-      "response": "Thanks for calling. Talk to you later!",
+      "response": "Thanks for reaching out! I'll make sure the team follows up with you. Have a great day!",
       "followUp": null
     },
     {
-      "id": "no_help",
-      "name": "No More Help Needed",
-      "triggers": ["no", "that's it", "nothing else", "all done", "done"],
+      "id": "not_interested",
+      "name": "Not Interested Right Now",
+      "triggers": ["not now", "later", "soch ke bataunga", "let me think", "not interested", "no thanks", "abhi nahi"],
       "priority": 95,
       "requiresAuth": false,
-      "response": "Cool. Anything else?",
-      "followUp": null
+      "response": "No problem at all! Whenever you're ready, just reach out. Want me to send our info so you have it handy?",
+      "followUp": "collect_contact"
     },
     {
       "id": "repeat",
       "name": "Repeat Response",
-      "triggers": ["again", "repeat", "say again", "didn't hear", "what was that"],
+      "triggers": ["again", "repeat", "say again", "didn't hear", "what was that", "dobara bolo", "samajh nahi aaya"],
       "priority": 90,
       "requiresAuth": false,
-      "response": "Sorry, I said...",
+      "response": "Let me say that again...",
       "followUp": null
     }
   ]

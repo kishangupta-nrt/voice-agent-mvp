@@ -5,6 +5,9 @@ import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
 import { Eye, EyeOff } from 'lucide-react';
 import { API_URL } from './config/api';
+import { detectLanguage, LANGUAGE_DISPLAY } from './config/languages';
+
+type ConversationStyle = 'english' | 'hindi' | 'hinglish' | 'marathi' | 'mixed-tech';
 
 function UnsupportedBrowser() {
   return (
@@ -100,7 +103,9 @@ function LoginScreen({ onLogin, onRegister, loading, error }: {
 }
 
 function MainApp({ token }: { token: string }) {
-  const { status, interimTranscript, startConversation, stopConversation, speak, isListening, error: voiceError } = useVoice();
+  const [detectedLang, setDetectedLang] = useState<string | null>(null);
+  const [detectedStyle, setDetectedStyle] = useState<ConversationStyle | null>(null);
+  const { status, interimTranscript, startConversation, stopConversation, speak, isListening, error: voiceError } = useVoice({ detectedLang, detectedStyle });
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -112,6 +117,11 @@ function MainApp({ token }: { token: string }) {
     setApiError(null);
     setDisplayError(null);
 
+    const detected = detectLanguage(text);
+    setDetectedLang(detected);
+
+    console.log('[CLIENT] Text:', text, 'Detected lang:', detected, 'Sent to server:', detected !== 'en' ? detected : 'none (en)');
+
     fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: { 
@@ -121,6 +131,7 @@ function MainApp({ token }: { token: string }) {
       body: JSON.stringify({
         message: text,
         conversationId: conversationId,
+        language: detected !== 'en' ? detected : undefined,
       }),
     })
       .then((res) => {
@@ -136,7 +147,10 @@ function MainApp({ token }: { token: string }) {
         if (data.conversationId) {
           setConversationId(data.conversationId);
         }
-        return speak(data.response);
+        if (data.style) {
+          setDetectedStyle(data.style as ConversationStyle);
+        }
+        return speak(data.response, detected, data.style);
       })
       .catch((err) => {
         const msg = err instanceof Error ? err.message : 'Something went wrong';
@@ -184,6 +198,17 @@ function MainApp({ token }: { token: string }) {
           <h1>Voice Agent</h1>
           <p>Talk to Mistral AI</p>
         </div>
+
+        {(detectedLang && detectedLang !== 'en') || detectedStyle ? (
+          <div className="language-indicator">
+            <span className="lang-dot" />
+            <span>
+              {detectedLang && detectedLang !== 'en' ? (LANGUAGE_DISPLAY[detectedLang] || detectedLang) : ''}
+              {detectedLang && detectedLang !== 'en' && detectedStyle ? ' · ' : ''}
+              {detectedStyle ? detectedStyle.charAt(0).toUpperCase() + detectedStyle.slice(1).replace('-', ' ') : ''}
+            </span>
+          </div>
+        ) : null}
 
         <div className="led-container">
           <div className={`led ${status}`} />

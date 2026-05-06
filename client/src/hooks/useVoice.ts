@@ -1,5 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+type ConversationStyle = 'english' | 'hindi' | 'hinglish' | 'marathi' | 'mixed-tech';
+
 type Status = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
 
 interface UseVoiceReturn {
@@ -10,12 +12,67 @@ interface UseVoiceReturn {
   isListening: boolean;
   startConversation: (onResult: (text: string) => void) => void;
   stopConversation: () => void;
-  speak: (text: string) => Promise<void>;
+  speak: (text: string, language: string, style?: ConversationStyle) => Promise<void>;
 }
 
-const SILENCE_DELAY = 700;
+interface UseVoiceOptions {
+  detectedLang?: string | null;
+  detectedStyle?: ConversationStyle | null;
+}
 
-const selectBestVoice = (): SpeechSynthesisVoice | null => {
+const BASE_SILENCE_DELAY = 1000;
+const MAX_SILENCE_DELAY = 2000;
+const MIN_SILENCE_DELAY = 800;
+
+const getAdaptiveSilenceDelay = (wordCount: number, speechDurationMs: number): number => {
+  let delay = BASE_SILENCE_DELAY;
+
+  if (wordCount <= 3) {
+    delay = MIN_SILENCE_DELAY + (wordCount * 50);
+  } else if (wordCount <= 8) {
+    delay = 1000 + ((wordCount - 3) * 100);
+  } else {
+    delay = 1500 + Math.min((wordCount - 8) * 50, 500);
+  }
+
+  if (speechDurationMs > 3000) {
+    delay += 300;
+  }
+
+  return Math.min(Math.max(delay, MIN_SILENCE_DELAY), MAX_SILENCE_DELAY);
+};
+
+const DEVANAGARI = /[\u0900-\u097F]/;
+const BENGALI = /[\u0980-\u09FF]/;
+const TAMIL = /[\u0B80-\u0BFF]/;
+const TELUGU = /[\u0C00-\u0C7F]/;
+const GUJARATI = /[\u0A80-\u0AFF]/;
+const KANNADA = /[\u0C80-\u0CFF]/;
+
+const getBcp47 = (lang: string): string => {
+  const map: Record<string, string> = {
+    hi: 'hi-IN', mr: 'mr-IN', ta: 'ta-IN', te: 'te-IN',
+    bn: 'bn-IN', gu: 'gu-IN', kn: 'kn-IN',
+  };
+  return map[lang] || 'en-US';
+};
+
+const getTtsRate = (style: ConversationStyle | null, lang: string): number => {
+  const rateMap: Record<string, number> = {
+    'english': 1.0,
+    'hindi': 0.85,
+    'hinglish': 0.95,
+    'marathi': 0.85,
+    'mixed-tech': 0.95,
+  };
+  return rateMap[style || ''] ?? (needsSlowerRate(lang) ? 0.85 : 1.0);
+};
+
+const needsSlowerRate = (lang: string): boolean => {
+  return ['hi', 'mr', 'ta', 'te', 'bn', 'gu', 'kn'].includes(lang);
+};
+
+const selectBestVoice = (languageCode: string = 'en'): SpeechSynthesisVoice | null => {
   if (!('speechSynthesis' in window)) return null;
   
   const getVoices = () => window.speechSynthesis.getVoices();
@@ -25,29 +82,38 @@ const selectBestVoice = (): SpeechSynthesisVoice | null => {
     return new Promise<SpeechSynthesisVoice | null>((resolve) => {
       window.speechSynthesis.onvoiceschanged = () => {
         voices = getVoices();
-        resolve(selectFromList(voices));
+        resolve(selectFromList(voices, languageCode));
       };
-      setTimeout(() => resolve(selectFromList(getVoices())), 100);
+      setTimeout(() => resolve(selectFromList(getVoices(), languageCode)), 100);
     }) as any;
   }
   
-  return selectFromList(voices);
+  return selectFromList(voices, languageCode);
 };
 
-const selectFromList = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+const selectFromList = (voices: SpeechSynthesisVoice[], languageCode: string = 'en'): SpeechSynthesisVoice | null => {
   if (!voices.length) return null;
+
+  const isNonEnglish = languageCode !== 'en';
   
-  const preferred = [
-    'Microsoft Ava',
-    'Microsoft Zira',
-    'Samantha',
-    'Google UK English Female',
-    'Google US English',
-    'English United Kingdom Female',
-    'English US Female',
-  ];
+  if (isNonEnglish) {
+    const langVoices = voices.filter(v => v.lang.startsWith(languageCode) || v.lang.includes(`-${languageCode.toUpperCase()}`));
+    
+    if (langVoices.length > 0) {
+      const female = langVoices.find(v => 
+        v.name.toLowerCase().includes('female') || 
+        v.name.toLowerCase().includes('woman') ||
+        v.name.toLowerCase().includes('zira') ||
+        v.name.toLowerCase().includes('samantha') ||
+        v.name.toLowerCase().includes('ava') ||
+        v.name.toLowerCase().includes('female')
+      );
+      return female || langVoices[0];
+    }
+  }
   
-  for (const name of preferred) {
+  const englishKeywords = ['Microsoft Ava', 'Microsoft Zira', 'Samantha', 'Google UK English Female', 'Google US English', 'English United Kingdom Female', 'English US Female'];
+  for (const name of englishKeywords) {
     const found = voices.find(v => v.name.includes(name));
     if (found) return found;
   }
@@ -62,11 +128,13 @@ const selectFromList = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | 
   return female || voices[0];
 };
 
-export function useVoice(): UseVoiceReturn {
+export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
+  const { detectedLang = null, detectedStyle = null } = options;
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
 
+  const styleRef = useRef<ConversationStyle | null>(detectedStyle);
   const isActiveRef = useRef(false);
   const isListeningRef = useRef(false);
   const recognitionRef = useRef<any>(null);
@@ -75,11 +143,21 @@ export function useVoice(): UseVoiceReturn {
   const onResultCallbackRef = useRef<((text: string) => void) | null>(null);
   const statusRef = useRef<Status>('idle');
   const internalStatusRef = useRef<string>('idle');
+  const speechStartTimeRef = useRef<number>(0);
+  const lastInterimTimeRef = useRef<number>(0);
+  const languageRef = useRef('en-US');
 
   useEffect(() => {
-    statusRef.current = status;
-    internalStatusRef.current = status;
-  }, [status]);
+    if (detectedLang) {
+      languageRef.current = getBcp47(detectedLang);
+    } else {
+      languageRef.current = 'en-US';
+    }
+  }, [detectedLang]);
+
+  useEffect(() => {
+    styleRef.current = detectedStyle;
+  }, [detectedStyle]);
 
   const isSupported = 
     'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
@@ -92,12 +170,14 @@ export function useVoice(): UseVoiceReturn {
   };
 
   const setupRecognition = useCallback((recognition: any) => {
-    recognition.lang = 'en-US';
+    recognition.lang = languageRef.current;
     recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onstart = () => {
       isListeningRef.current = true;
+      speechStartTimeRef.current = Date.now();
+      lastInterimTimeRef.current = Date.now();
       setStatus('listening');
     };
 
@@ -146,6 +226,13 @@ export function useVoice(): UseVoiceReturn {
         interimRef.current = interim;
         setInterimTranscript(interim);
         
+        const now = Date.now();
+        const speechDuration = now - speechStartTimeRef.current;
+        const wordCount = interim.trim().split(/\s+/).length;
+        const adaptiveDelay = getAdaptiveSilenceDelay(wordCount, speechDuration);
+        
+        lastInterimTimeRef.current = now;
+        
         silenceTimerRef.current = setTimeout(() => {
           const textToSend = interimRef.current.trim();
           if (textToSend && isListeningRef.current) {
@@ -159,7 +246,7 @@ export function useVoice(): UseVoiceReturn {
               onResultCallbackRef.current(textToSend);
             }
           }
-        }, SILENCE_DELAY);
+        }, adaptiveDelay);
       }
     };
 
@@ -207,6 +294,8 @@ export function useVoice(): UseVoiceReturn {
 
       speechSynthesis.cancel();
       clearSilenceTimer();
+      speechStartTimeRef.current = 0;
+      lastInterimTimeRef.current = 0;
 
       const SpeechRecognitionConstructor =
         (window as any).webkitSpeechRecognition ||
@@ -255,7 +344,7 @@ export function useVoice(): UseVoiceReturn {
     onResultCallbackRef.current = null;
   }, []);
 
-  const speak = useCallback((text: string): Promise<void> => {
+  const speak = useCallback((text: string, language: string, style?: ConversationStyle): Promise<void> => {
     return new Promise<void>((resolve) => {
       if (!('speechSynthesis' in window)) {
         resolve();
@@ -268,10 +357,13 @@ export function useVoice(): UseVoiceReturn {
       setStatus('speaking');
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.pitch = 1;
       
-      const voice = selectBestVoice();
+      const langCode = language !== 'en' ? getBcp47(language) : 'en-US';
+      utterance.lang = langCode;
+      utterance.rate = getTtsRate(style || styleRef.current, language);
+      utterance.pitch = 1.0;
+      
+      const voice = selectBestVoice(language);
       if (voice) {
         utterance.voice = voice;
       }

@@ -1,4 +1,4 @@
-import { Customer } from './tools/customer.service';
+import type { Customer } from './tools/customer.service';
 
 export interface ConversationContext {
   customer: Customer | null;
@@ -9,50 +9,105 @@ export interface ConversationContext {
   turnCount: number;
   mentionedNames: string[];
   askedAbout: string[];
+  lastAccessed: number;
 }
 
-const conversationContexts = new Map<string, ConversationContext>();
+interface TimedContext {
+  context: ConversationContext;
+  createdAt: number;
+}
+
+const conversationContexts = new Map<string, TimedContext>();
+
+const CONTEXT_TTL_MS = 30 * 60 * 1000;
+const CONTEXT_MAX_SIZE = 500;
+const EVICTION_INTERVAL_MS = 5 * 60 * 1000;
+let lastEviction = 0;
 
 const TOPIC_KEYWORDS: Record<string, string[]> = {
-  order: ['order', 'delivery', 'package', 'shipped', 'arriving'],
-  refund: ['refund', 'money back', 'reimburse'],
-  return: ['return', 'send back', 'exchange'],
-  billing: ['bill', 'charge', 'payment', 'invoice', 'price'],
-  support: ['problem', 'issue', 'broken', 'not working', 'help'],
-  account: ['account', 'profile', 'settings', 'update'],
-  hours: ['hours', 'open', 'close', 'time'],
-  callback: ['call back', 'phone', 'contact'],
+  project: ['website', 'web', 'app', 'ai', 'build', 'project', 'product', 'saas', 'platform', 'software', 'system', 'banwani', 'chahiye', 'banana'],
+  features: ['feature', 'login', 'payment', 'dashboard', 'need', 'want', 'include', 'must have', 'requirement', 'feature chahiye'],
+  budget: ['budget', 'cost', 'price', 'pricing', 'kitna', 'kharcha', 'much', 'expensive', 'affordable', 'range'],
+  timeline: ['timeline', 'deadline', 'kitna time', 'long', 'when', 'week', 'month', 'delivery', 'launch', 'fast', 'urgent', 'asap'],
+  contact: ['phone', 'email', 'contact', 'reach', 'callback', 'details', 'number', 'whatsapp'],
+  meeting: ['meeting', 'call', 'discuss', 'talk', 'consultation', 'baat', 'demo'],
 };
 
 const TOPIC_FOLLOWUPS: Record<string, string[]> = {
-  order: [
-    "Did you want to check the status or something else?",
-    "Need help tracking that?",
-    "What's the order number?",
+  project: [
+    "What kind of project are you thinking about?",
+    "Is it a website, app, or something else?",
+    "Tell me more about what you want to build.",
   ],
-  return: [
-    "What item do you want to return?",
-    "Got the receipt or order number?",
+  features: [
+    "What features are most important?",
+    "Any specific functionality you need?",
+    "What should the user be able to do?",
   ],
-  billing: [
-    "Want me to send you the pricing details?",
-    "What specifically do you need to know about?",
+  budget: [
+    "Do you have a rough budget in mind?",
+    "What range are you comfortable with?",
+    "Small, medium, or large scale project?",
   ],
-  support: [
-    "What's going on?",
-    "Can you tell me what happened?",
+  timeline: [
+    "When do you need it by?",
+    "Any deadline you're working with?",
+    "Is this urgent or planned for later?",
   ],
-  callback: [
-    "When works best for you?",
-    "What number should I call?",
+  contact: [
+    "What's the best number to reach you?",
+    "Should I send details over WhatsApp or email?",
+  ],
+  meeting: [
+    "What day and time works for you?",
+    "Morning or evening better for you?",
   ],
 };
 
+const TRANSITION_PREFIXES: Record<string, string[]> = {
+  website_inquiry: ["Sure", "Got it", "Sounds good", "Alright"],
+  app_inquiry: ["Cool", "Got it", "Nice", "Alright"],
+  ai_inquiry: ["Interesting", "Got it", "Sure", "Alright"],
+  pricing_inquiry: ["Sure", "No problem", "Happy to help", "Got it"],
+  timeline_inquiry: ["Depends", "Sure", "Got it"],
+  tech_stack_inquiry: ["We use", "Sure", "Good question"],
+  schedule_meeting: ["Sure", "Great", "Let's set that up"],
+  help: ["Sure thing", "Of course", "Happy to help"],
+};
+
+function evictExpired(): void {
+  const now = Date.now();
+  for (const [key, timed] of conversationContexts.entries()) {
+    if (now - timed.context.lastAccessed > CONTEXT_TTL_MS) {
+      conversationContexts.delete(key);
+    }
+  }
+}
+
+function enforceMaxSize(): void {
+  if (conversationContexts.size > CONTEXT_MAX_SIZE) {
+    const sorted = Array.from(conversationContexts.entries())
+      .sort((a, b) => a[1].context.lastAccessed - b[1].context.lastAccessed);
+    const toRemove = conversationContexts.size - CONTEXT_MAX_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      conversationContexts.delete(sorted[i][0]);
+    }
+  }
+}
+
 export class ConversationManager {
   getOrCreate(conversationId: string): ConversationContext {
-    let ctx = conversationContexts.get(conversationId);
-    if (!ctx) {
-      ctx = {
+    const now = Date.now();
+
+    if (now - lastEviction > EVICTION_INTERVAL_MS) {
+      evictExpired();
+      enforceMaxSize();
+      lastEviction = now;
+    }
+
+    let timed = conversationContexts.get(conversationId);
+    if (!timed) {
+      const ctx: ConversationContext = {
         customer: null,
         lastIntent: null,
         lastTopic: null,
@@ -61,10 +116,14 @@ export class ConversationManager {
         turnCount: 0,
         mentionedNames: [],
         askedAbout: [],
+        lastAccessed: now,
       };
-      conversationContexts.set(conversationId, ctx);
+      conversationContexts.set(conversationId, { context: ctx, createdAt: now });
+      return ctx;
     }
-    return ctx;
+
+    timed.context.lastAccessed = now;
+    return timed.context;
   }
 
   detectTopic(message: string): string | null {
@@ -93,7 +152,8 @@ export class ConversationManager {
   ): void {
     const ctx = this.getOrCreate(conversationId);
     ctx.turnCount++;
-    
+    ctx.lastAccessed = Date.now();
+
     if (intent) ctx.lastIntent = intent;
     if (topic) ctx.lastTopic = topic;
     if (slot) {
@@ -107,6 +167,7 @@ export class ConversationManager {
   setCustomer(conversationId: string, customer: Customer): void {
     const ctx = this.getOrCreate(conversationId);
     ctx.customer = customer;
+    ctx.lastAccessed = Date.now();
     if (customer.name) {
       ctx.mentionedNames.push(customer.name);
     }
@@ -122,16 +183,16 @@ export class ConversationManager {
 
   formatGreeting(customerName: string | null): string {
     const greetings = [
-      "Hey, thanks for calling. What's up?",
-      "Hi there. How can I help?",
-      "Thanks for calling. What do you need?",
-      "Hey, what can I do for you?",
+      "Hey, thanks for calling. What are you looking to build?",
+      "Hi there! What kind of project can I help with?",
+      "Thanks for reaching out. What do you need?",
+      "Hey, what can I help you build today?",
     ];
-    
+
     if (customerName) {
-      return `Hey ${customerName}, thanks for calling. What's going on?`;
+      return `Hey ${customerName}, thanks for calling. What are you working on?`;
     }
-    
+
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
@@ -156,15 +217,9 @@ export class ConversationManager {
     return clarifications[Math.floor(Math.random() * clarifications.length)];
   }
 
-  formatTransition(fromIntent: string, toIntent: string): string {
-    const transitions: Record<string, string[]> = {
-      help: ["Cool", "Got it", "Sure thing", "Alright"],
-      order: ["Looking into that", "Let me check", "Got it"],
-      return: ["No problem", "Got it", "Sure"],
-      ticket: ["I'll create that for you", "Let me put that in", "Got it"],
-    };
-    
-    const prefix = transitions[fromIntent]?.[Math.floor(Math.random() * (transitions[fromIntent]?.length || 1))] || "Got it";
+  formatTransition(fromIntent: string): string {
+    const prefixes = TRANSITION_PREFIXES[fromIntent] || TRANSITION_PREFIXES.help;
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
     return `${prefix}.`;
   }
 }
