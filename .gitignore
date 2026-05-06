@@ -8,6 +8,11 @@ node_modules/
 .env.local
 .env.*.local
 .env.production
+.env.development
+server/.env
+client/.env
+**/.env
+!**/.env.example
 
 # Exception: .env.example is fine to commit (no real secrets)
 !.env.example
