@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 interface ConversationRecord {
@@ -17,9 +18,10 @@ interface ConversationRecord {
 interface AdminConversationsProps {
   userId: string;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
 }
 
-export function AdminConversations({ userId, onSelectConversation }: AdminConversationsProps) {
+export function AdminConversations({ userId, onSelectConversation, onDeleteConversation }: AdminConversationsProps) {
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
@@ -47,6 +49,26 @@ export function AdminConversations({ userId, onSelectConversation }: AdminConver
       setConversations([]);
     }
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Delete this conversation? This cannot be undone.')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_URL}/chat/admin/conversations/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setConversations(prev => prev.filter(c => c.id !== id));
+        onDeleteConversation(id);
+      }
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
   };
 
   const filtered = conversations.filter(c => {
@@ -107,6 +129,13 @@ export function AdminConversations({ userId, onSelectConversation }: AdminConver
               <span className="admin-conv-title">
                 {conv.first_message ? truncate(conv.first_message, 60) : 'Empty conversation'}
               </span>
+              <button
+                className="admin-conv-delete-btn"
+                onClick={(e) => handleDelete(conv.id, e)}
+                title="Delete conversation"
+              >
+                <Trash2 size={16} />
+              </button>
               <span className="admin-conv-date">
                 {new Date(conv.created_at).toLocaleDateString('en', {
                   day: '2-digit', month: 'short', year: 'numeric',

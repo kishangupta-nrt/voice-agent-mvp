@@ -296,6 +296,30 @@ class AdminRepository {
     }
   }
 
+  async deleteConversation(conversationId: string, userId: string): Promise<boolean> {
+    const client = getAdminClient();
+    if (!client) return false;
+
+    try {
+      const { error: convError } = await client
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+        .eq('user_id', userId);
+
+      if (convError) return false;
+
+      await client
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private detectLanguage(text: string): string {
     const lower = text.toLowerCase();
     if (/[\u0900-\u097F]/.test(text)) return 'hindi';

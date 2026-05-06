@@ -143,4 +143,20 @@ export class ChatController {
       return res.status(500).json({ error: 'Failed to fetch leads' });
     }
   }
+
+  public async adminDeleteConversation(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const { id } = req.params;
+      if (!id || !isValidUUID(id)) {
+        return res.status(400).json({ error: 'Valid conversation ID required' });
+      }
+      const deleted = await adminRepository.deleteConversation(id, userId);
+      if (!deleted) return res.status(404).json({ error: 'Conversation not found' });
+      return res.status(200).json({ success: true });
+    } catch {
+      return res.status(500).json({ error: 'Failed to delete conversation' });
+    }
+  }
 }

@@ -25,17 +25,22 @@ export function AdminPanel({ userId, userEmail, onExit }: AdminPanelProps) {
     setPage('conversations');
   };
 
+  const handleDeleteConversation = (id: string) => {
+    setSelectedConversation(null);
+    setPage('conversations');
+  };
+
   const renderPage = () => {
     switch (page) {
       case 'dashboard':
         return <AdminDashboard userId={userId} />;
       case 'conversations':
-        return <AdminConversations userId={userId} onSelectConversation={handleSelectConversation} />;
+        return <AdminConversations userId={userId} onSelectConversation={handleSelectConversation} onDeleteConversation={handleDeleteConversation} />;
       case 'conversation-detail':
         return selectedConversation ? (
-          <AdminConversationDetail conversationId={selectedConversation} userId={userId} onBack={handleBack} />
+          <AdminConversationDetail conversationId={selectedConversation} userId={userId} onBack={handleBack} onDelete={handleDeleteConversation} />
         ) : (
-          <AdminConversations userId={userId} onSelectConversation={handleSelectConversation} />
+          <AdminConversations userId={userId} onSelectConversation={handleSelectConversation} onDeleteConversation={handleDeleteConversation} />
         );
       case 'leads':
         return <AdminLeads userId={userId} />;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 interface ConversationDetail {
@@ -19,9 +19,10 @@ interface AdminConversationDetailProps {
   conversationId: string;
   userId: string;
   onBack: () => void;
+  onDelete: (id: string) => void;
 }
 
-export function AdminConversationDetail({ conversationId, userId, onBack }: AdminConversationDetailProps) {
+export function AdminConversationDetail({ conversationId, userId, onBack, onDelete }: AdminConversationDetailProps) {
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +53,23 @@ export function AdminConversationDetail({ conversationId, userId, onBack }: Admi
 
   const leadInfo = analyzeLead(detail.messages);
 
+  const handleDelete = async () => {
+    if (!confirm('Delete this conversation? This cannot be undone.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_URL}/chat/admin/conversations/${conversationId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onDelete(conversationId);
+      }
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
+  };
+
   return (
     <div className="admin-page">
       <div className="admin-page-header">
@@ -60,6 +78,9 @@ export function AdminConversationDetail({ conversationId, userId, onBack }: Admi
         </button>
         <h1>Conversation</h1>
         <span className="admin-conv-id-badge">{detail.messages.length} messages</span>
+        <button className="admin-delete-btn" onClick={handleDelete} title="Delete conversation">
+          <Trash2 size={16} /> Delete
+        </button>
       </div>
 
       <div className="admin-detail-meta">
