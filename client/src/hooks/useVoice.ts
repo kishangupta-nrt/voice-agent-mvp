@@ -75,17 +75,12 @@ const needsSlowerRate = (lang: string): boolean => {
 const selectBestVoice = (languageCode: string = 'en'): SpeechSynthesisVoice | null => {
   if (!('speechSynthesis' in window)) return null;
   
-  const getVoices = () => window.speechSynthesis.getVoices();
-  let voices = getVoices();
-  
-  if (voices.length === 0) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      voices = getVoices();
-    };
-    return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    return selectFromList(voices, languageCode);
   }
   
-  return selectFromList(voices, languageCode);
+  return null;
 };
 
 const selectFromList = (voices: SpeechSynthesisVoice[], languageCode: string = 'en'): SpeechSynthesisVoice | null => {

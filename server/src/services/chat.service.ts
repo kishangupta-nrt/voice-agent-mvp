@@ -33,7 +33,6 @@ interface ConversationState {
   ragUsedThisTurn: boolean;
 }
 
-const conversationStates = new Map<string, ConversationState>();
 const STATE_TTL_MS = 30 * 60 * 1000;
 const STATE_MAX_SIZE = 500;
 const STATE_EVICTION_INTERVAL_MS = 5 * 60 * 1000;
@@ -51,7 +50,6 @@ function evictExpiredStates(): void {
   for (const [key, timed] of timedStates.entries()) {
     if (now - timed.lastAccessed > STATE_TTL_MS) {
       timedStates.delete(key);
-      conversationStates.delete(key);
       conversationManager.clearContext(key);
     }
   }
@@ -65,7 +63,6 @@ function enforceStateMaxSize(): void {
     for (let i = 0; i < toRemove; i++) {
       const key = sorted[i][0];
       timedStates.delete(key);
-      conversationStates.delete(key);
       conversationManager.clearContext(key);
     }
   }
@@ -90,7 +87,6 @@ function getOrCreateState(conversationId: string): ConversationState {
       ragUsedThisTurn: false,
     };
     timedStates.set(conversationId, { state, lastAccessed: now });
-    conversationStates.set(conversationId, state);
     return state;
   }
 
@@ -101,7 +97,6 @@ function getOrCreateState(conversationId: string): ConversationState {
 
 function clearConversationState(conversationId: string): void {
   timedStates.delete(conversationId);
-  conversationStates.delete(conversationId);
   conversationManager.clearContext(conversationId);
   leadTracker.clear(conversationId);
 }

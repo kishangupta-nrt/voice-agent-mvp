@@ -25,4 +25,9 @@ router.post('/verify', async (req, res) => {
 router.get('/', controller.getConversations.bind(controller));
 router.get('/health', controller.healthCheck.bind(controller));
 
+router.get('/admin/stats', controller.adminStats.bind(controller));
+router.get('/admin/conversations', controller.adminConversations.bind(controller));
+router.get('/admin/conversations/:id', controller.adminConversationDetail.bind(controller));
+router.get('/admin/leads', controller.adminLeads.bind(controller));
+
 export default router;

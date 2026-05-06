@@ -105,46 +105,6 @@ class KnowledgeService {
     return parts.join('\n\n');
   }
 
-  searchByQuery(query: string, topK = 2): string {
-    const lower = query.toLowerCase();
-    const scored: { section: KnowledgeSection; score: number }[] = [];
-
-    for (const doc of this.documents.values()) {
-      for (const section of doc.sections) {
-        let score = 0;
-        const sectionLower = section.content.toLowerCase();
-        const headingLower = section.heading.toLowerCase();
-        const words = lower.split(/\s+/).filter(w => w.length > 2);
-
-        for (const word of words) {
-          if (headingLower.includes(word)) score += 3;
-          if (sectionLower.includes(word)) score += 1;
-        }
-
-        if (score > 0) {
-          scored.push({ section, score });
-        }
-      }
-    }
-
-    scored.sort((a, b) => b.score - a.score);
-
-    const top = scored.slice(0, topK);
-    if (top.length === 0) return '';
-
-    return top.map(s => `${s.section.heading} (${s.section.source})\n${s.section.content}`).join('\n\n');
-  }
-
-  getAllSections(): string {
-    const parts: string[] = [];
-    for (const doc of this.documents.values()) {
-      for (const section of doc.sections) {
-        parts.push(`${section.heading}\n${section.content}`);
-      }
-    }
-    return parts.join('\n\n');
-  }
-
   getStats(): { docsLoaded: number; totalSections: number } {
     let totalSections = 0;
     for (const doc of this.documents.values()) {

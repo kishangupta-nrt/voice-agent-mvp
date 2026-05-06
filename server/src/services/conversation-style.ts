@@ -141,19 +141,3 @@ export function detectConversationStyle(text: string): StyleResult {
 
   return { style: 'english', language: 'en', hasTechnical: techCount > 0 };
 }
-
-export const STYLE_DISPLAY: Record<ConversationStyle, string> = {
-  english: 'English',
-  hindi: 'हिन्दी',
-  hinglish: 'हिंदी + English',
-  marathi: 'मराठी',
-  'mixed-tech': 'हिंदी + English (Tech)',
-};
-
-export const STYLE_TTS_RATE: Record<ConversationStyle, number> = {
-  english: 1.0,
-  hindi: 0.88,
-  hinglish: 0.92,
-  marathi: 0.85,
-  'mixed-tech': 0.92,
-};

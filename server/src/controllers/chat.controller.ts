@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ChatService } from '../services/chat.service';
 import { AuthRequest } from '../middleware/auth';
 import type { Customer } from '../services/tools/customer.service';
+import { adminRepository } from '../repositories/admin.repository';
 
 const isValidUUID = (id: string): boolean => {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
@@ -90,7 +91,56 @@ export class ChatController {
     return this.chatService.verifyCustomer(conversationId, phone);
   }
 
-  public setCustomer(conversationId: string, customer: Customer): void {
-    this.chatService.setCustomer(conversationId, customer);
+  public async adminStats(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const days = parseInt(req.query.days as string) || 30;
+      const stats = await adminRepository.getStats(days, userId);
+      if (!stats) return res.status(500).json({ error: 'Failed to fetch stats' });
+      return res.status(200).json(stats);
+    } catch {
+      return res.status(500).json({ error: 'Failed to fetch admin stats' });
+    }
+  }
+
+  public async adminConversations(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const offset = parseInt(req.query.offset as string) || 0;
+      const conversations = await adminRepository.getAllConversations(limit, offset, userId);
+      return res.status(200).json({ conversations, total: conversations.length });
+    } catch {
+      return res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  }
+
+  public async adminConversationDetail(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const { id } = req.params;
+      if (!id || !isValidUUID(id)) {
+        return res.status(400).json({ error: 'Valid conversation ID required' });
+      }
+      const detail = await adminRepository.getConversationDetail(id, userId);
+      if (!detail) return res.status(404).json({ error: 'Conversation not found' });
+      return res.status(200).json(detail);
+    } catch {
+      return res.status(500).json({ error: 'Failed to fetch conversation' });
+    }
+  }
+
+  public async adminLeads(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const leads = await adminRepository.getLeadSummaries(userId);
+      return res.status(200).json({ leads, total: leads.length });
+    } catch {
+      return res.status(500).json({ error: 'Failed to fetch leads' });
+    }
   }
 }

@@ -37,19 +37,6 @@ export class EmbeddingService {
     }
   }
 
-  async embedTexts(texts: string[]): Promise<number[][]> {
-    const embeddings: number[][] = [];
-
-    for (const text of texts) {
-      const embedding = await this.embedText(text);
-      if (embedding.length > 0) {
-        embeddings.push(embedding);
-      }
-    }
-
-    return embeddings;
-  }
-
   cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
 
@@ -65,21 +52,6 @@ export class EmbeddingService {
 
     const denominator = Math.sqrt(normA) * Math.sqrt(normB);
     return denominator === 0 ? 0 : dotProduct / denominator;
-  }
-
-  findMostSimilar(queryEmbedding: number[], embeddings: number[][]): number {
-    let bestIndex = 0;
-    let bestScore = -1;
-
-    for (let i = 0; i < embeddings.length; i++) {
-      const score = this.cosineSimilarity(queryEmbedding, embeddings[i]);
-      if (score > bestScore) {
-        bestScore = score;
-        bestIndex = i;
-      }
-    }
-
-    return bestIndex;
   }
 
   async isAvailable(): Promise<boolean> {

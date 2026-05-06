@@ -25,15 +25,6 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  if (TEST_MODE) {
-    const authHeader = req.headers.authorization;
-    if (authHeader === `Bearer ${TEST_TOKEN}`) {
-      req.userId = TEST_USER_ID;
-      next();
-      return;
-    }
-  }
-
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'No token provided' });
@@ -43,6 +34,12 @@ export const authMiddleware = async (
   const token = authHeader.slice(7);
   if (!token) {
     res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
+  if (TEST_MODE && token === TEST_TOKEN) {
+    req.userId = TEST_USER_ID;
+    next();
     return;
   }
 

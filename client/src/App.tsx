@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useVoice, Status, ConversationStyle } from './hooks/useVoice';
-import { useAuth } from './hooks/useAuth';
+import { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useVoice, ConversationStyle } from './hooks/useVoice';
+import { useAuth, AuthUser } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import { API_URL } from './config/api';
 import { detectLanguage, LANGUAGE_DISPLAY } from './config/languages';
+import { AdminPanel } from './admin/AdminPanel';
 
 function UnsupportedBrowser() {
   return (
@@ -178,15 +180,6 @@ function MainApp({ token }: { token: string }) {
     }
   }, [voiceError]);
 
-  useEffect(() => {
-    if (apiError) {
-      setDisplayError(apiError);
-      setTimeout(() => {
-        startConversation(handleVoiceCallback);
-      }, 1000);
-    }
-  }, [apiError, startConversation, handleVoiceCallback]);
-
   return (
     <div className="app">
       <div className="glass-card">
@@ -233,6 +226,38 @@ function MainApp({ token }: { token: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function AppContent({ user, token, logout }: { user: AuthUser; token: string; logout: () => void }) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    document.body.classList.add('voice-app');
+    return () => {
+      document.body.classList.remove('voice-app');
+    };
+  }, []);
+
+  return (
+    <Routes>
+      <Route path="/" element={
+        <>
+          <div className="app">
+            <div className="glass-card user-bar">
+              <span>{user.email}</span>
+              <button onClick={() => navigate('/admin')} className="admin-btn">
+                <LayoutDashboard size={14} /> Admin
+              </button>
+              <button onClick={logout} className="logout-btn">Logout</button>
+            </div>
+          </div>
+          <MainApp token={token} />
+        </>
+      } />
+      <Route path="/admin" element={<AdminPanel userId={user.id} userEmail={user.email} onExit={() => navigate('/')} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
@@ -286,24 +311,20 @@ export default function App() {
   
   if (!user || !token) {
     return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        loading={loading}
-        error={loginError}
-      />
+      <BrowserRouter>
+        <LoginScreen
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          loading={loading}
+          error={loginError}
+        />
+      </BrowserRouter>
     );
   }
 
   return (
-    <>
-      <div className="app">
-        <div className="glass-card user-bar">
-          <span>{user.email}</span>
-          <button onClick={logout} className="logout-btn">Logout</button>
-        </div>
-      </div>
-      <MainApp token={token} />
-    </>
+    <BrowserRouter>
+      <AppContent user={user} token={token} logout={logout} />
+    </BrowserRouter>
   );
 }
