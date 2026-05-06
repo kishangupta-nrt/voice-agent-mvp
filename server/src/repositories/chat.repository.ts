@@ -24,6 +24,12 @@ export interface Message {
   created_at: string;
 }
 
+export interface ConversationWithMessages {
+  id: string;
+  created_at: string;
+  messages: Array<{ content: string; role: string; created_at: string }>;
+}
+
 export class ChatRepository {
   async createConversation(userId: string): Promise<string | null> {
     const client = getSupabaseClient();
@@ -37,13 +43,13 @@ export class ChatRepository {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('ChatRepository (createConversation):', error);
         return null;
       }
 
       return data?.id || null;
     } catch (error) {
-      console.error('Failed to create conversation:', error);
+      console.error('ChatRepository (createConversation):', error);
       return null;
     }
   }
@@ -68,10 +74,10 @@ export class ChatRepository {
       });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('ChatRepository (saveMessage):', error);
       }
     } catch (error) {
-      console.error('Failed to save message:', error);
+      console.error('ChatRepository (saveMessage):', error);
     }
   }
 
@@ -88,18 +94,18 @@ export class ChatRepository {
         .limit(limit);
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('ChatRepository (getConversationHistory):', error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('Failed to fetch history:', error);
+      console.error('ChatRepository (getConversationHistory):', error);
       return [];
     }
   }
 
-  async getRecentConversations(userId: string, limit = 10): Promise<any[]> {
+  async getRecentConversations(userId: string, limit = 10): Promise<ConversationWithMessages[]> {
     const client = getSupabaseClient();
     if (!client) return [];
 
@@ -116,13 +122,13 @@ export class ChatRepository {
         .limit(limit);
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('ChatRepository (getRecentConversations):', error);
         return [];
       }
 
-      return data || [];
+      return (data as ConversationWithMessages[]) || [];
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error('ChatRepository (getRecentConversations):', error);
       return [];
     }
   }

@@ -1,23 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import { jwtVerify, createRemoteJWKSet, JWTPayload } from 'jose';
-
-const JWKS_URL = 'https://ywflgzyrdikqhlkjrypy.supabase.co/auth/v1/.well-known/jwks.json';
+import { ENV } from '../config/env';
 
 export interface AuthRequest extends Request {
   userId?: string;
 }
 
-// Test mode bypass
-const TEST_MODE = process.env.TEST_MODE === 'true';
+const TEST_MODE = ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
 const TEST_TOKEN = 'test-token-123';
-const TEST_USER_ID = 'test-user-123';
+const TEST_USER_ID = '6b350365-8345-48d2-a577-b270762f9091';
 
 let getKey: ReturnType<typeof createRemoteJWKSet>;
 
-try {
-  getKey = createRemoteJWKSet(new URL(JWKS_URL));
-} catch (e) {
-  console.log('JWKS URL not configured, test mode only');
+if (ENV.SUPABASE_URL) {
+  try {
+    getKey = createRemoteJWKSet(new URL(`${ENV.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+  } catch {
+    console.log('JWKS init failed, test mode only');
+  }
 }
 
 export const authMiddleware = async (
@@ -25,11 +25,13 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  // Test mode - bypass auth
   if (TEST_MODE) {
-    req.userId = TEST_USER_ID;
-    next();
-    return;
+    const authHeader = req.headers.authorization;
+    if (authHeader === `Bearer ${TEST_TOKEN}`) {
+      req.userId = TEST_USER_ID;
+      next();
+      return;
+    }
   }
 
   const authHeader = req.headers.authorization;
@@ -44,13 +46,6 @@ export const authMiddleware = async (
     return;
   }
 
-  // Test token bypass
-  if (token === TEST_TOKEN) {
-    req.userId = TEST_USER_ID;
-    next();
-    return;
-  }
-
   try {
     if (!getKey) {
       res.status(500).json({ error: 'Auth not configured' });
@@ -62,8 +57,7 @@ export const authMiddleware = async (
     });
     req.userId = (payload as JWTPayload & { sub: string }).sub;
     next();
-  } catch (err) {
-    console.error('JWT verification failed:', err);
+  } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 };

@@ -41,4 +41,4 @@ export function detectIntent(message: string): Intent | null {
   return null;
 }
 
-export { greetingIntents, faqIntents };
+export { greetingIntents, faqIntents, closingIntents };

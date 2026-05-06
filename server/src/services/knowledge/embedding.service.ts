@@ -16,7 +16,7 @@ export class EmbeddingService {
 
   constructor() {
     this.model = ENV.OLLAMA_MODEL || 'mistral';
-    this.baseUrl = ENV.OLLAMA_URL.replace('/api/generate', '');
+    this.baseUrl = ENV.OLLAMA_URL;
   }
 
   async embedText(text: string): Promise<number[]> {
@@ -32,44 +32,45 @@ export class EmbeddingService {
 
       return response.data.embedding;
     } catch (error) {
-      console.error('Embedding error:', error);
+      console.error('Embedding error:', error instanceof Error ? error.message : error);
       return [];
     }
   }
 
   async embedTexts(texts: string[]): Promise<number[][]> {
     const embeddings: number[][] = [];
-    
+
     for (const text of texts) {
       const embedding = await this.embedText(text);
       if (embedding.length > 0) {
         embeddings.push(embedding);
       }
     }
-    
+
     return embeddings;
   }
 
   cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-    
+
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-    
+
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-    
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+
+    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+    return denominator === 0 ? 0 : dotProduct / denominator;
   }
 
   findMostSimilar(queryEmbedding: number[], embeddings: number[][]): number {
     let bestIndex = 0;
     let bestScore = -1;
-    
+
     for (let i = 0; i < embeddings.length; i++) {
       const score = this.cosineSimilarity(queryEmbedding, embeddings[i]);
       if (score > bestScore) {
@@ -77,7 +78,7 @@ export class EmbeddingService {
         bestIndex = i;
       }
     }
-    
+
     return bestIndex;
   }
 

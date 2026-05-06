@@ -250,11 +250,6 @@ body {
   transition: all 0.3s;
 }
 
-.led.active {
-  background: var(--success);
-  box-shadow: 0 0 10px var(--success);
-}
-
 .led.error {
   background: var(--error);
   box-shadow: 0 0 10px var(--error);
@@ -434,4 +429,32 @@ body {
 .led.error {
   background: var(--error);
   box-shadow: 0 0 10px var(--error);
+}
+
+.language-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  align-self: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.lang-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

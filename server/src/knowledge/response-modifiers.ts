@@ -7,53 +7,55 @@ export const CASUAL_PREFIXES = [
   { regex: /^sorry/i, insert: ["My bad, ", "Oops, "] },
 ];
 
-export const FILLER_WORDS = [
-  { trigger: "thinking", words: ["uh", "um", "let me think", "hang on"] },
-  { trigger: "searching", words: ["looking", "checking", "finding"] },
-  { trigger: "confirmation", words: ["got it", "cool", "alright", "done"] },
-];
-
 export const CASUAL_RESPONSES = {
   greeting: [
-    "Hey, thanks for calling.",
-    "Hi there.",
-    "Thanks for calling. What's up?",
+    "Hey, thanks for calling. What can I help with?",
+    "Hi there! What's going on?",
+    "Thanks for calling. How can I help you today?",
+    "Hey! What do you need help with?",
+    "Hi, I'm here to help. What's up?",
   ],
   thanks: [
     "No problem.",
     "Sure thing.",
     "You got it.",
     "Anytime.",
+    "Happy to help.",
+    "No worries at all.",
   ],
   goodbye: [
     "Talk to you later.",
     "Take care.",
     "Bye for now.",
+    "Have a good one.",
+    "See you later.",
   ],
   clarification: [
-    "What's that?",
-    "Can you say that again?",
-    "What do you mean?",
+    "Could you say that a different way? I want to make sure I understand.",
+    "Hmm, not sure I caught that. What did you mean?",
+    "Sorry, can you rephrase that for me?",
+    "I didn't quite get that. Could you explain a bit more?",
+    "Can you tell me more about what you need?",
+    "Not sure I follow. Are you asking about something specific?",
+    "Could you give me a bit more detail on that?",
+    "I want to help - can you clarify what you're looking for?",
+    "Not sure I understood. What exactly do you need?",
+    "Can you tell me what you're trying to figure out?",
   ],
   waiting: [
     "Hang on.",
     "One sec.",
     "Give me a sec.",
     "Just a sec.",
+    "Let me look into that.",
+    "Give me a moment.",
   ],
 };
-
-export const TOPIC_CHECKS = [
-  { topic: "order", check: "Are you tracking an order or something?", variations: ["Need help with an order?", "Want to check an order status?"] },
-  { topic: "return", check: "Returning something?", variations: ["Got the item info?", "What's the item?"] },
-  { topic: "billing", check: "Question about billing?", variations: ["Need pricing info?", "Want me to send rates?"] },
-  { topic: "support", check: "What's going on?", variations: ["Can you tell me more?", "What's the issue?"] },
-];
 
 export function addCasualPrefix(response: string): string {
   const words = response.split(" ");
   if (words.length < 3) return response;
-  
+
   for (const { regex, insert } of CASUAL_PREFIXES) {
     if (regex.test(words[0].toLowerCase())) {
       const prefix = insert[Math.floor(Math.random() * insert.length)];
@@ -62,17 +64,8 @@ export function addCasualPrefix(response: string): string {
       }
     }
   }
-  
-  return response;
-}
 
-export function addThinkingDelay(response: string, probability = 0.1): string {
-  if (Math.random() > probability) return response;
-  
-  const fillers = ["let me think, ", "hang on, ", "checking that, "];
-  const filler = fillers[Math.floor(Math.random() * fillers.length)];
-  
-  return filler + response.charAt(0).toLowerCase() + response.slice(1);
+  return response;
 }
 
 export function varyResponse(responses: string[]): string {
@@ -81,7 +74,7 @@ export function varyResponse(responses: string[]): string {
 
 export function personalizeForCustomer(name: string | null, response: string): string {
   if (!name) return response;
-  
+
   return response
     .replace(/{name}/g, name)
     .replace(/\bhey\b/gi, `hey ${name}`)

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ChatService } from '../services/chat.service';
-import { AuthRequest } from '../middleware/auth.js';
+import { AuthRequest } from '../middleware/auth';
+import type { Customer } from '../services/tools/customer.service';
 
 const isValidUUID = (id: string): boolean => {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
@@ -16,7 +17,7 @@ export class ChatController {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
-      const { message, conversationId } = req.body;
+      const { message, conversationId, language } = req.body;
 
       if (typeof message !== 'string') {
         return res.status(400).json({ error: 'Invalid message type' });
@@ -35,13 +36,16 @@ export class ChatController {
       const result = await this.chatService.processMessage(
         sanitizedMessage,
         userId,
-        conversationId
+        conversationId,
+        language
       );
 
       return res.status(200).json({
         response: result.response,
         conversationId: result.conversationId,
         requiresAuth: result.requiresAuth || false,
+        style: result.style,
+        language: result.language,
       });
     } catch (error) {
       const errorMessage =
@@ -82,11 +86,11 @@ export class ChatController {
     }
   }
 
-  public async verifyCustomer(conversationId: string, phone: string): Promise<{ success: boolean; message: string; customer?: any }> {
+  public async verifyCustomer(conversationId: string, phone: string): Promise<{ success: boolean; message: string; customer?: Customer }> {
     return this.chatService.verifyCustomer(conversationId, phone);
   }
 
-  public setCustomer(conversationId: string, customer: any): void {
+  public setCustomer(conversationId: string, customer: Customer): void {
     this.chatService.setCustomer(conversationId, customer);
   }
 }

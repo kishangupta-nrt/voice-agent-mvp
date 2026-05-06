@@ -152,6 +152,68 @@ CREATE POLICY "Service role callbacks_insert" ON callbacks FOR INSERT WITH CHECK
 CREATE POLICY "Service role callbacks_update" ON callbacks FOR UPDATE USING (true);
 ```
 
+## MEMORY SYSTEM TABLES
+
+```sql
+-- User profiles (persistent identity and preferences)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) UNIQUE,
+  name VARCHAR(255),
+  preferences JSONB DEFAULT '{}',
+  communication_style TEXT,
+  last_interaction TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  total_conversations INTEGER DEFAULT 0,
+  satisfaction_score DECIMAL(3,2),
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User memories (facts learned across conversations)
+CREATE TABLE IF NOT EXISTS user_memories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  category TEXT CHECK (category IN ('preference', 'fact', 'goal', 'issue', 'personal')),
+  content TEXT NOT NULL,
+  confidence DECIMAL(3,2) DEFAULT 1.0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_accessed TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  access_count INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- Conversation summaries (post-conversation extraction)
+CREATE TABLE IF NOT EXISTS conversation_summaries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id),
+  user_id UUID REFERENCES auth.users(id),
+  summary_text TEXT,
+  key_facts JSONB DEFAULT '[]',
+  resolved_issues JSONB DEFAULT '[]',
+  sentiment TEXT CHECK (sentiment IN ('positive', 'neutral', 'negative')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_memories_user_id ON user_memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_memories_category ON user_memories(category);
+CREATE INDEX IF NOT EXISTS idx_user_memories_active ON user_memories(is_active);
+CREATE INDEX IF NOT EXISTS idx_conversation_summaries_user_id ON conversation_summaries(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_summaries_conversation_id ON conversation_summaries(conversation_id);
+
+-- RLS policies
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_memories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_summaries ENABLE ROW LEVEL SECURITY;
+
+-- Allow service role full access
+CREATE POLICY "Service role user_profiles" ON user_profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role user_memories" ON user_memories FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role conversation_summaries" ON conversation_summaries FOR ALL USING (true) WITH CHECK (true);
+```
+
 ## Sample Data (For Testing)
 
 ```sql

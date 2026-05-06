@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useVoice, Status } from './hooks/useVoice';
+import { useVoice, Status, ConversationStyle } from './hooks/useVoice';
 import { useAuth } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
 import { Eye, EyeOff } from 'lucide-react';
 import { API_URL } from './config/api';
 import { detectLanguage, LANGUAGE_DISPLAY } from './config/languages';
-
-type ConversationStyle = 'english' | 'hindi' | 'hinglish' | 'marathi' | 'mixed-tech';
 
 function UnsupportedBrowser() {
   return (
@@ -119,8 +117,6 @@ function MainApp({ token }: { token: string }) {
 
     const detected = detectLanguage(text);
     setDetectedLang(detected);
-
-    console.log('[CLIENT] Text:', text, 'Detected lang:', detected, 'Sent to server:', detected !== 'en' ? detected : 'none (en)');
 
     fetch(`${API_URL}/chat`, {
       method: 'POST',

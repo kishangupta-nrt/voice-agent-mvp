@@ -7,14 +7,6 @@ interface VoiceButtonProps {
   onStop: () => void;
 }
 
-const statusLabels: Record<Status, string> = {
-  idle: 'Tap to speak',
-  listening: 'Listening...',
-  thinking: 'Thinking...',
-  speaking: 'Speaking...',
-  error: 'Error occurred',
-};
-
 export function VoiceButton({ status, onStart, onStop }: VoiceButtonProps) {
   const isActive = status === 'listening' || status === 'speaking';
 

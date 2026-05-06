@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ENV } from '../config/env.js';
-import { sendVerificationEmail } from '../services/email.service.js';
+import { ENV } from '../config/env';
+import { sendVerificationEmail } from '../services/email.service';
 
 const router = Router();
 
@@ -9,10 +9,9 @@ const getSupabaseAdmin = (): SupabaseClient => {
   return createClient(ENV.SUPABASE_URL, ENV.SUPABASE_KEY);
 };
 
-// Test mode - bypass auth for development
-const TEST_MODE = process.env.TEST_MODE === 'true';
-const TEST_USER_ID = 'test-user-123';
+const TEST_MODE = ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
 const TEST_TOKEN = 'test-token-123';
+const TEST_USER_ID = '6b350365-8345-48d2-a577-b270762f9091';
 
 router.post('/login', async (req, res) => {
   // Test mode - bypass auth
@@ -40,7 +39,7 @@ router.post('/login', async (req, res) => {
 
     if (error) {
       console.error('Supabase login error:', error.message);
-      return res.status(401).json({ error: error.message });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     if (!data.session) {
@@ -90,21 +89,11 @@ router.post('/register', async (req, res) => {
 
     if (error) {
       console.error('Registration error:', error.message);
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: 'Registration failed. Please try again.' });
     }
 
     // Send verification email via Resend
     if (data.user && !data.session) {
-      // User created but needs email verification
-      if (ENV.RESEND_API_KEY && data.user.email) {
-        try {
-          await sendVerificationEmail(data.user.email, '');
-          console.log('📧 Verification email sent to:', data.user.email);
-        } catch (emailError) {
-          console.error('Failed to send verification email:', emailError);
-        }
-      }
-      
       res.status(201).json({
         message: 'Account created! Please check your email to verify your account.',
         user: { id: data.user.id, email: data.user.email },

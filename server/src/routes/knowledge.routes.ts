@@ -1,25 +1,26 @@
 import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth';
 import { ragService } from '../services/knowledge/rag.service';
 
 const router = Router();
 
-router.post('/ingest', async (req, res) => {
+router.post('/ingest', authMiddleware, async (req, res) => {
   try {
     const { text, source } = req.body;
-    
+
     if (!text || !source) {
       return res.status(400).json({ error: 'text and source required' });
     }
-    
+
     const added = await ragService.addDocument(text, source);
-    
+
     return res.status(200).json({
       success: true,
       chunksAdded: added,
       totalChunks: ragService.getStats().totalChunks,
     });
   } catch (error) {
-    console.error('Ingest error:', error);
+    console.error('Ingest error:', error instanceof Error ? error.message : error);
     return res.status(500).json({ error: 'Failed to ingest document' });
   }
 });
@@ -27,13 +28,13 @@ router.post('/ingest', async (req, res) => {
 router.post('/search', async (req, res) => {
   try {
     const { query, topK } = req.body;
-    
+
     if (!query) {
       return res.status(400).json({ error: 'query required' });
     }
-    
+
     const results = await ragService.search(query, topK || 3);
-    
+
     return res.status(200).json({
       query,
       results: results.map(r => ({
@@ -43,7 +44,7 @@ router.post('/search', async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error('Search error:', error);
+    console.error('Search error:', error instanceof Error ? error.message : error);
     return res.status(500).json({ error: 'Search failed' });
   }
 });
@@ -52,7 +53,7 @@ router.get('/stats', async (req, res) => {
   try {
     const stats = ragService.getStats();
     const ready = await ragService.isReady();
-    
+
     return res.status(200).json({
       ...stats,
       ollamaReady: ready,
@@ -62,10 +63,10 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-router.post('/clear', async (req, res) => {
+router.post('/clear', authMiddleware, async (req, res) => {
   try {
     ragService.clear();
-    
+
     return res.status(200).json({
       success: true,
       message: 'Knowledge base cleared',
@@ -79,7 +80,7 @@ router.get('/health', async (req, res) => {
   try {
     const ready = await ragService.isReady();
     const stats = ragService.getStats();
-    
+
     return res.status(200).json({
       status: ready ? 'ready' : 'not_ready',
       ollamaAvailable: ready,
@@ -88,7 +89,7 @@ router.get('/health', async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Unknown error',
     });
   }
 });

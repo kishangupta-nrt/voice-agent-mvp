@@ -8,7 +8,7 @@ export interface TextChunk {
 export interface ProcessedDocument {
   source: string;
   chunks: TextChunk[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 const DEFAULT_CHUNK_SIZE = 500;
@@ -45,7 +45,8 @@ export class ChunkingService {
         });
         
         const overlapStart = currentChunk.length - this.chunkOverlap;
-        currentChunk = overlapStart > 0 ? trimmed.slice(-this.chunkOverlap) + ' ' + trimmed : trimmed;
+        const overlapText = overlapStart > 0 ? currentChunk.slice(overlapStart) : '';
+        currentChunk = overlapText ? overlapText + ' ' + trimmed : trimmed;
         chunkIndex++;
       } else {
         currentChunk += (currentChunk ? ' ' : '') + trimmed;
@@ -217,7 +218,7 @@ export class ChunkingService {
     const qPattern = /^Q[.:]\s*/i;
     const mdPattern = /^#+ /m;
     
-    if (qPattern.test(text) || text.includes('Q:') && text.includes('A:')) {
+    if ((qPattern.test(text) || text.includes('Q:')) && text.includes('A:')) {
       return 'qa';
     }
     if (mdPattern.test(text)) {

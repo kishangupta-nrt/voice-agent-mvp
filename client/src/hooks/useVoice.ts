@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
-type ConversationStyle = 'english' | 'hindi' | 'hinglish' | 'marathi' | 'mixed-tech';
+export type ConversationStyle = 'english' | 'hindi' | 'hinglish' | 'marathi' | 'mixed-tech';
 
 type Status = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
 
@@ -79,13 +79,10 @@ const selectBestVoice = (languageCode: string = 'en'): SpeechSynthesisVoice | nu
   let voices = getVoices();
   
   if (voices.length === 0) {
-    return new Promise<SpeechSynthesisVoice | null>((resolve) => {
-      window.speechSynthesis.onvoiceschanged = () => {
-        voices = getVoices();
-        resolve(selectFromList(voices, languageCode));
-      };
-      setTimeout(() => resolve(selectFromList(getVoices(), languageCode)), 100);
-    }) as any;
+    window.speechSynthesis.onvoiceschanged = () => {
+      voices = getVoices();
+    };
+    return null;
   }
   
   return selectFromList(voices, languageCode);
@@ -141,7 +138,6 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interimRef = useRef('');
   const onResultCallbackRef = useRef<((text: string) => void) | null>(null);
-  const statusRef = useRef<Status>('idle');
   const internalStatusRef = useRef<string>('idle');
   const speechStartTimeRef = useRef<number>(0);
   const lastInterimTimeRef = useRef<number>(0);
@@ -353,7 +349,6 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
       speechSynthesis.cancel();
       
-      statusRef.current = 'speaking';
       setStatus('speaking');
 
       const utterance = new SpeechSynthesisUtterance(text);
