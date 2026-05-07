@@ -60,9 +60,9 @@ export class ChatRepository {
     content: string,
     userId: string,
     durationMs?: number
-  ): Promise<void> {
+  ): Promise<boolean> {
     const client = getSupabaseClient();
-    if (!client || !conversationId) return;
+    if (!client || !conversationId) return false;
 
     try {
       const { error } = await client.from('messages').insert({
@@ -75,9 +75,13 @@ export class ChatRepository {
 
       if (error) {
         console.error('ChatRepository (saveMessage):', error);
+        return false;
       }
+
+      return true;
     } catch (error) {
       console.error('ChatRepository (saveMessage):', error);
+      return false;
     }
   }
 

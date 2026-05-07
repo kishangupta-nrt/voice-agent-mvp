@@ -23,7 +23,7 @@ app.use(cors({
     if (!origin || ENV.CORS_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, false);
+      callback(new Error('Not allowed by CORS'));
     }
   }
 }));

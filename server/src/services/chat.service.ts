@@ -172,9 +172,9 @@ export class ChatService {
     response: string,
     userId: string,
     startTime: number
-  ): Promise<void> {
+  ): Promise<boolean> {
     const durationMs = Date.now() - startTime;
-    await this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
+    return this.chatRepository.saveMessage(convId, 'assistant', response, userId, durationMs);
   }
 
   async processMessage(
@@ -202,7 +202,10 @@ export class ChatService {
 
     const memoryContext = await memoryService.getContextForPrompt(userId);
 
-    await this.chatRepository.saveMessage(convId, 'user', message, userId);
+    const userMsgSaved = await this.chatRepository.saveMessage(convId, 'user', message, userId);
+    if (!userMsgSaved) {
+      console.warn(`[ChatService] Failed to persist user message for conversation ${convId}`);
+    }
 
     await memoryService.updateCommunicationStyle(userId, message);
 
@@ -276,7 +279,10 @@ export class ChatService {
     const requiresAuth = intentResult.requiresAuth;
 
     if (response) {
-      await this.saveAssistantMessage(convId, response, userId, startTime);
+      const msgSaved = await this.saveAssistantMessage(convId, response, userId, startTime);
+      if (!msgSaved) {
+        console.warn(`[ChatService] Failed to persist assistant message for conversation ${convId}`);
+      }
 
       if (intentResult.customer) {
         state.customer = intentResult.customer;

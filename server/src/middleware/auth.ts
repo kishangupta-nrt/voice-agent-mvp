@@ -6,7 +6,7 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-const TEST_MODE = ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
+const TEST_MODE = ENV.NODE_ENV !== 'production' && (ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true');
 const TEST_TOKEN = 'test-token-123';
 const TEST_USER_ID = '6b350365-8345-48d2-a577-b270762f9091';
 

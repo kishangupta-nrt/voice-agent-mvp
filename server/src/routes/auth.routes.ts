@@ -1,18 +1,29 @@
 import { Router } from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import rateLimit from 'express-rate-limit';
 import { ENV } from '../config/env';
 
 const router = Router();
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const authRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again later.' },
+});
 
 const getSupabaseAdmin = (): SupabaseClient => {
   return createClient(ENV.SUPABASE_URL, ENV.SUPABASE_KEY);
 };
 
-const TEST_MODE = ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
+const TEST_MODE = ENV.NODE_ENV !== 'production' && (ENV.NODE_ENV === 'test' || process.env.TEST_MODE === 'true');
 const TEST_TOKEN = 'test-token-123';
 const TEST_USER_ID = '6b350365-8345-48d2-a577-b270762f9091';
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimit, async (req, res) => {
   // Test mode - bypass auth
   if (TEST_MODE) {
     console.log('🔧 TEST MODE: Auth bypassed');
@@ -27,6 +38,10 @@ router.post('/login', async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     const supabase = getSupabaseAdmin();
@@ -55,26 +70,31 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimit, async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
 
   // Test mode - bypass auth
   if (TEST_MODE) {
     console.log('🔧 TEST MODE: Register bypassed');
     return res.status(201).json({
       message: 'Test user created',
-      user: { id: TEST_USER_ID, email: email || 'test@example.com' },
+      user: { id: TEST_USER_ID, email: email },
     });
   }
 
   try {
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password required' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
 
     const supabase = getSupabaseAdmin();
     
