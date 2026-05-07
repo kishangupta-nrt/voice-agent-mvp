@@ -50,7 +50,7 @@ export const authMiddleware = async (
     }
 
     const { payload } = await jwtVerify(token, getKey, {
-      algorithms: ['ES256'],
+      algorithms: ['RS256'],
     });
     req.userId = (payload as JWTPayload & { sub: string }).sub;
     next();

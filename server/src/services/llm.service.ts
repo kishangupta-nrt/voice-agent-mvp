@@ -120,7 +120,7 @@ const buildOllamaPrompt = (
 };
 
 const sanitizeOutput = (text: string): string => {
-  return text.replace(/[<>]/g, '').trim();
+  return text.trim();
 };
 
 export class LlmService {

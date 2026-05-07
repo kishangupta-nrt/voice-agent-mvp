@@ -86,6 +86,10 @@ export function useAuth(): UseAuthReturn {
         throw new Error(data.error || 'Registration failed');
       }
 
+      if (data.needsVerification) {
+        throw new Error(data.message || 'Please check your email to verify your account.');
+      }
+
       const userData = {
         id: data.user?.id,
         email: data.user?.email || email,

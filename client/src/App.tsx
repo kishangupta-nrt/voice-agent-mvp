@@ -284,7 +284,6 @@ export default function App() {
     try {
       setLoginError(null);
       await register(email, password);
-      setLoginError('Check your email to confirm your account!');
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : 'Registration failed');
     }

@@ -108,7 +108,7 @@ export function detectConversationStyle(text: string): StyleResult {
       mrScore += 1;
     }
 
-    if (!HINDI_LATIN.includes(w) && !TECHNICAL_TERMS.includes(w)) {
+    if (!HINDI_LATIN.includes(w) && !MARATHI_LATIN.includes(w) && !TECHNICAL_TERMS.includes(w)) {
       englishCount++;
     }
   }

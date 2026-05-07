@@ -60,7 +60,7 @@ export function addCasualPrefix(response: string): string {
     if (regex.test(words[0].toLowerCase())) {
       const prefix = insert[Math.floor(Math.random() * insert.length)];
       if (!response.toLowerCase().startsWith(prefix.trim().toLowerCase().replace(",", ""))) {
-        return prefix + response.charAt(0).toLowerCase() + response.slice(1);
+        return prefix + response.charAt(0) + response.slice(1);
       }
     }
   }

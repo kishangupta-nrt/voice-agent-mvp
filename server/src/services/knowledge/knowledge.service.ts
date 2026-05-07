@@ -48,7 +48,7 @@ class KnowledgeService {
   loadDocuments(baseDir?: string): void {
     if (this.isLoaded) return;
 
-    const dir = baseDir || path.join(__dirname, '../knowledge/knowledge-base');
+    const dir = baseDir || path.join(__dirname, '../../knowledge/knowledge-base');
 
     try {
       if (!fs.existsSync(dir)) {
