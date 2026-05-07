@@ -18,9 +18,14 @@ try {
 
 const app: Application = express();
 
+const allowedOrigins = [
+  ...ENV.CORS_ORIGINS,
+  ...(ENV.VERCEL_URL ? [`https://${ENV.VERCEL_URL}`, `https://${ENV.VERCEL_URL}`] : []),
+];
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || ENV.CORS_ORIGINS.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

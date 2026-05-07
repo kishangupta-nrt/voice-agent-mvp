@@ -49,7 +49,15 @@ const COMPANY_PATTERNS: Record<string, RegExp[]> = {
 };
 
 const CONTACT_PATTERNS = {
-  phone: [/phone\s*(?:number)?\s*[:\s]*([+\d\s-]{7,})/i, /mobile\s*[:\s]*([+\d\s-]{7,})/i, /call\s*me\s*at\s*([+\d\s-]{7,})/i, /(?:number|no)\s*[:\s]*([+\d\s-]{7,})/i],
+  phone: [
+    /phone\s*(?:number)?\s*[:\s]*([+\d\s-]{7,})/i,
+    /mobile\s*[:\s]*([+\d\s-]{7,})/i,
+    /call\s*me\s*at\s*([+\d\s-]{7,})/i,
+    /(?:number|no)\s*[:\s]*([+\d\s-]{7,})/i,
+    /(?:my|the|a)?\s*(?:number|mobile|phone|whatsapp)\s*(?:is|:)?\s*([+\d\s-]{7,})/i,
+    /reach\s*(?:me|us)?\s*(?:at|on)?\s*([+\d\s-]{7,})/i,
+    /contact\s*(?:me|us)?\s*(?:at|on)?\s*([+\d\s-]{7,})/i,
+  ],
   email: [/email\s*[:\s]*([\w.+-]+@[\w-]+\.[\w.]+)/i, /mail\s*[:\s]*([\w.+-]+@[\w-]+\.[\w.]+)/i],
 };
 

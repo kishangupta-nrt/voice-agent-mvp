@@ -232,6 +232,26 @@ SELECT id, 'billing', 'Question about charge', 'low'
 FROM customers WHERE phone = '+1234567890';
 ```
 
+## Helper Functions (for server-side atomic operations)
+
+```sql
+-- Atomic increment for conversation count (prevents race conditions)
+CREATE OR REPLACE FUNCTION increment_conversation_count(p_user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO user_profiles (user_id, total_conversations, last_interaction)
+  VALUES (p_user_id, 1, NOW())
+  ON CONFLICT (user_id)
+  DO UPDATE SET
+    total_conversations = user_profiles.total_conversations + 1,
+    last_interaction = NOW();
+END;
+$$;
+```
+
 ## Alternative: PostgreSQL Syntax for local DB
 
 ```sql

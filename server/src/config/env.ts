@@ -33,6 +33,7 @@ export const ENV = {
   CORS_ORIGINS: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
     : ['http://localhost:5173', 'http://localhost:3000'],
+  VERCEL_URL: process.env.VERCEL_URL || '',
 
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   FROM_EMAIL: process.env.FROM_EMAIL || 'onboarding@resend.dev',

@@ -280,22 +280,13 @@ export class MemoryRepository {
     if (!client) return;
 
     try {
-      const { data: profile } = await client
-        .from('user_profiles')
-        .select('total_conversations')
-        .eq('user_id', userId)
-        .single();
+      const { error } = await client.rpc('increment_conversation_count', {
+        user_id: userId,
+      });
 
-      const current = profile?.total_conversations || 0;
-      const { error } = await client
-        .from('user_profiles')
-        .update({
-          total_conversations: current + 1,
-          last_interaction: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
-
-      if (error) console.error(`${LOG_PREFIX} (incrementConversationCount):`, error);
+      if (error) {
+        console.error(`${LOG_PREFIX} (incrementConversationCount):`, error);
+      }
     } catch (error) {
       console.error(`${LOG_PREFIX} (incrementConversationCount):`, error);
     }

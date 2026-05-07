@@ -39,11 +39,25 @@ const HINDI_LATIN = [
   'sunna', 'samjhana', 'batana', 'puchna', 'likhna',
 ];
 
+const HINDI_NATIVE = [
+  'है', 'हूँ', 'क्या', 'आप', 'मुझे', 'नहीं', 'करना', 'बताइए', 'कैसे', 'मदद',
+  'चाहिए', 'हाँ', 'अच्छा', 'ठीक', 'क्यों', 'कहाँ', 'कब', 'कौन', 'हम', 'मैं',
+  'नाम', 'आपका', 'आपकी', 'हैं', 'हमें', 'बात', 'सुनो', 'देखो', 'करो',
+  'बताओ', 'पता', 'समझ', 'करें', 'होना', 'जाना', 'आना',
+];
+
 const MARATHI_LATIN = [
   'ahe', 'ahot', 'kaay', 'tumhala', 'mala', 'nahi', 'sangaa', 'madat', 'hava', 'baran',
   'mhanun', 'pan', 'tumhi', 'mi', 'tujhe', 'tula', 'tyala', 'ticha', 'nav', 'bol',
   'bolaa', 'bagha', 'jra', 'khup', 'barach', 'kasa', 'kasel', 'kothe', 'kadhi',
   'karaycha', 'karaychi', 'karayche', 'banavaycha', 'havi', 'aamhi', 'tumcha',
+];
+
+const MARATHI_NATIVE = [
+  'आहे', 'आहोत', 'काय', 'तुम्हाला', 'मला', 'नाही', 'सांगा', 'मदत', 'हवं', 'बरं',
+  'म्हणून', 'पण', 'तुम्ही', 'मी', 'तुझे', 'तुला', 'त्याला', 'तिचा', 'नाव', 'बोल',
+  'बघा', 'जरा', 'खूप', 'बरंच', 'कसं', 'कसा', 'कुठे', 'कधी',
+  'करायचं', 'करायची', 'बनवायचं', 'हवी', 'आम्ही', 'तुमचा',
 ];
 
 export interface StyleResult {
@@ -73,8 +87,8 @@ export function detectConversationStyle(text: string): StyleResult {
     const words = trimmed.split(/\s+/);
     let hi = 0, mr = 0;
     for (const w of words) {
-      if (HINDI_LATIN.some(hw => w.includes(hw))) hi++;
-      if (MARATHI_LATIN.some(mw => w.includes(mw))) mr++;
+      if (HINDI_NATIVE.some(hw => w.includes(hw))) hi++;
+      if (MARATHI_NATIVE.some(mw => w.includes(mw))) mr++;
     }
     const isMixed = words.some(w => TECHNICAL_TERMS.includes(w));
     if (mr > hi) return { style: isMixed ? 'mixed-tech' : 'marathi', language: 'mr', hasTechnical: isMixed };

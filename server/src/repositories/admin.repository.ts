@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ENV } from '../config/env';
 import type { Message } from './chat.repository';
+import { detectConversationStyle } from '../services/conversation-style';
 
 let supabase: SupabaseClient | null = null;
 
@@ -111,10 +112,9 @@ class AdminRepository {
 
       for (const m of msgData || []) {
         if (m.role === 'user') {
-          const lang = this.detectLanguage(m.content);
-          langMap.set(lang, (langMap.get(lang) || 0) + 1);
-          const style = this.detectStyle(m.content);
-          styleMap.set(style, (styleMap.get(style) || 0) + 1);
+          const result = detectConversationStyle(m.content);
+          langMap.set(result.language, (langMap.get(result.language) || 0) + 1);
+          styleMap.set(result.style, (styleMap.get(result.style) || 0) + 1);
         }
       }
 
@@ -149,23 +149,31 @@ class AdminRepository {
     }
   }
 
-  async getAllConversations(limit = 100, offset = 0, userId?: string): Promise<ConversationRecord[]> {
+  async getAllConversations(limit = 100, offset = 0, userId?: string): Promise<{ conversations: ConversationRecord[]; total: number }> {
     const client = getAdminClient();
-    if (!client) return [];
+    if (!client) return { conversations: [], total: 0 };
 
     try {
+      let countQuery = client
+        .from('conversations')
+        .select('id', { count: 'exact', head: true });
+
       let convQuery = client
         .from('conversations')
         .select('id, user_id, created_at')
         .order('created_at', { ascending: false });
 
       if (userId) {
+        countQuery = countQuery.eq('user_id', userId);
         convQuery = convQuery.eq('user_id', userId);
       }
 
+      const { count } = await countQuery;
+      const total = count || 0;
+
       const { data: convData } = await convQuery.range(offset, offset + limit - 1);
 
-      if (!convData || convData.length === 0) return [];
+      if (!convData || convData.length === 0) return { conversations: [], total };
 
       const convIds = convData.map(c => c.id);
 
@@ -181,7 +189,7 @@ class AdminRepository {
         msgByConv.get(m.conversation_id)!.push(m);
       }
 
-      return convData.map(c => {
+      const conversations = convData.map(c => {
         const msgs = msgByConv.get(c.id) || [];
         return {
           id: c.id,
@@ -196,8 +204,10 @@ class AdminRepository {
           language: null,
         };
       });
+
+      return { conversations, total };
     } catch {
-      return [];
+      return { conversations: [], total: 0 };
     }
   }
 
@@ -349,24 +359,6 @@ class AdminRepository {
     }
   }
 
-  private detectLanguage(text: string): string {
-    const lower = text.toLowerCase();
-    if (/[\u0900-\u097F]/.test(text)) return 'hindi';
-    if (/[\u0980-\u09FF]/.test(text)) return 'bengali';
-    if (/[\u0B80-\u0BFF]/.test(text)) return 'tamil';
-    if (/[\u0C00-\u0C7F]/.test(text)) return 'telugu';
-    if (/hai|nahi|kya|aap|mujhe|chahiye|kaise|banana/.test(lower)) return 'hinglish';
-    return 'english';
-  }
-
-  private detectStyle(text: string): string {
-    const lower = text.toLowerCase();
-    if (/[\u0900-\u097F]/.test(text)) return 'hindi';
-    if (/[\u0980-\u09FF]/.test(text)) return 'bengali';
-    if (/hai|nahi|kya|aap|mujhe|chahiye|kaise|banana/.test(lower) && !/[\u0900-\u097F]/.test(text)) return 'hinglish';
-    if (/react|next\.?js|api|database|aws|docker|typescript/i.test(text) && /hai|nahi|kya|chahiye/i.test(lower)) return 'mixed-tech';
-    return 'english';
-  }
 }
 
 export const adminRepository = new AdminRepository();

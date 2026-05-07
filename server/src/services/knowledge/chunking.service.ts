@@ -184,28 +184,29 @@ export class ChunkingService {
     const sentencePattern = /[^.!?]+[.!?]+/g;
     const sentences = text.match(sentencePattern) || [];
     
-    let currentChunk = '';
+    let currentChunk: string[] = [];
     let chunkIndex = 0;
     
     for (const sentence of sentences) {
-      if (currentChunk.length + sentence.length > this.chunkSize && currentChunk.length > 0) {
+      currentChunk.push(sentence.trim());
+      
+      if (currentChunk.length >= sentencesPerChunk) {
         chunks.push({
           id: `${source}-${chunkIndex}`,
-          content: currentChunk.trim(),
+          content: currentChunk.join(' '),
           source,
           index: chunkIndex,
         });
         
-        currentChunk = '';
+        currentChunk = [];
         chunkIndex++;
       }
-      currentChunk += (currentChunk ? ' ' : '') + sentence.trim();
     }
     
-    if (currentChunk.trim()) {
+    if (currentChunk.length > 0) {
       chunks.push({
         id: `${source}-${chunkIndex}`,
-        content: currentChunk.trim(),
+        content: currentChunk.join(' '),
         source,
         index: chunkIndex,
       });

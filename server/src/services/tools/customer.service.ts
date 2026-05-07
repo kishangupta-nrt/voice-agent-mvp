@@ -20,14 +20,13 @@ export class CustomerService {
         .from('customers')
         .select('*')
         .ilike('phone', `%${cleanedPhone.slice(-10)}`)
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         return null;
       }
 
-      return data as Customer;
+      return data[0] as Customer;
     } catch {
       return null;
     }
@@ -37,10 +36,12 @@ export class CustomerService {
     const client = getSupabaseClient();
     if (!client) return null;
 
+    const cleanedPhone = phone.replace(/[^\d+]/g, '');
+
     try {
       const { data, error } = await client
         .from('customers')
-        .insert({ phone, email, name })
+        .insert({ phone: cleanedPhone, email, name })
         .select()
         .single();
 

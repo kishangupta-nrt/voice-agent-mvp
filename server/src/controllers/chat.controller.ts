@@ -110,8 +110,8 @@ export class ChatController {
       if (!userId) return res.status(401).json({ error: 'Not authenticated' });
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
       const offset = parseInt(req.query.offset as string) || 0;
-      const conversations = await adminRepository.getAllConversations(limit, offset, userId);
-      return res.status(200).json({ conversations, total: conversations.length });
+      const { conversations, total } = await adminRepository.getAllConversations(limit, offset, userId);
+      return res.status(200).json({ conversations, total });
     } catch {
       return res.status(500).json({ error: 'Failed to fetch conversations' });
     }

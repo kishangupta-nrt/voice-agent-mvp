@@ -427,6 +427,10 @@ export class ChatService {
     state.customer = customer;
     conversationManager.setCustomer(conversationId, customer);
 
+    if (customer.phone) {
+      leadTracker.update(conversationId, `phone: ${customer.phone}`);
+    }
+
     const greetings = [
       `Hey ${customer.name || 'there'}! What do you need?`,
       `Gotcha ${customer.name || 'there'}. What's up?`,

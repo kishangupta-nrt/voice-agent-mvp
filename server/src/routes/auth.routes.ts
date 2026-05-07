@@ -62,7 +62,7 @@ router.post('/login', authRateLimit, async (req, res) => {
 
     res.json({
       token: data.session.access_token,
-      user: data.user,
+      user: { id: data.user.id, email: data.user.email },
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -122,18 +122,23 @@ router.post('/register', authRateLimit, async (req, res) => {
     }
 
     // User created with immediate session (email not required to verify)
-    if (data.session) {
+    if (data.session && data.user) {
       res.json({
         token: data.session.access_token,
-        user: data.user,
+        user: { id: data.user.id, email: data.user.email },
       });
       return;
     }
 
-    res.status(201).json({
-      message: 'Account created.',
-      user: data.user,
-    });
+    if (data.user) {
+      res.status(201).json({
+        message: 'Account created.',
+        user: { id: data.user.id, email: data.user.email },
+      });
+      return;
+    }
+
+    res.status(500).json({ error: 'Registration failed — no user created' });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Registration failed' });
