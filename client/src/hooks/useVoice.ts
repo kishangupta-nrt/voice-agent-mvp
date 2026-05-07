@@ -133,6 +133,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interimRef = useRef('');
   const finalRef = useRef('');
+  const lastTranscriptRef = useRef('');
   const onResultCallbackRef = useRef<((text: string) => void) | null>(null);
   const internalStatusRef = useRef<string>('idle');
   const speechStartTimeRef = useRef<number>(0);
@@ -179,8 +180,6 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     };
 
     recognition.onresult = (event: any) => {
-      clearSilenceTimer();
-
       let allFinal = '';
       let allInterim = '';
       for (let i = 0; i < event.results.length; i++) {
@@ -198,33 +197,38 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         ? allFinal + (allInterim ? ' ' + allInterim : '')
         : allInterim;
 
+      if (!displayText.trim() || displayText === lastTranscriptRef.current) {
+        return;
+      }
+      lastTranscriptRef.current = displayText;
+
+      clearSilenceTimer();
       interimRef.current = displayText;
       setInterimTranscript(displayText);
 
-      if (displayText.trim()) {
-        const now = Date.now();
-        const speechDuration = now - speechStartTimeRef.current;
-        const wordCount = displayText.trim().split(/\s+/).length;
-        const adaptiveDelay = getAdaptiveSilenceDelay(wordCount, speechDuration);
+      const now = Date.now();
+      const speechDuration = now - speechStartTimeRef.current;
+      const wordCount = displayText.trim().split(/\s+/).length;
+      const adaptiveDelay = getAdaptiveSilenceDelay(wordCount, speechDuration);
 
-        lastInterimTimeRef.current = now;
+      lastInterimTimeRef.current = now;
 
-        silenceTimerRef.current = setTimeout(() => {
-          const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
-          if (textToSubmit && isListeningRef.current) {
-            isListeningRef.current = false;
-            finalRef.current = '';
-            interimRef.current = '';
-            setInterimTranscript('');
-            recognition.stop();
-            setStatus('thinking');
+      silenceTimerRef.current = setTimeout(() => {
+        const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
+        if (textToSubmit && isListeningRef.current) {
+          isListeningRef.current = false;
+          finalRef.current = '';
+          interimRef.current = '';
+          lastTranscriptRef.current = '';
+          setInterimTranscript('');
+          recognition.stop();
+          setStatus('thinking');
 
-            if (onResultCallbackRef.current) {
-              onResultCallbackRef.current(textToSubmit);
-            }
+          if (onResultCallbackRef.current) {
+            onResultCallbackRef.current(textToSubmit);
           }
-        }, adaptiveDelay);
-      }
+        }
+      }, adaptiveDelay);
     };
 
     recognition.onerror = (event: any) => {
@@ -294,6 +298,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       setInterimTranscript('');
       interimRef.current = '';
       finalRef.current = '';
+      lastTranscriptRef.current = '';
 
       setupRecognition(recognition);
       recognition.start();
@@ -309,6 +314,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     clearSilenceTimer();
     interimRef.current = '';
     finalRef.current = '';
+    lastTranscriptRef.current = '';
 
     if (recognitionRef.current) {
       recognitionRef.current.abort();
@@ -364,6 +370,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             isListeningRef.current = true;
             interimRef.current = '';
             finalRef.current = '';
+            lastTranscriptRef.current = '';
             setInterimTranscript('');
             
             setupRecognition(recognition);
@@ -390,6 +397,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
               isListeningRef.current = true;
               interimRef.current = '';
               finalRef.current = '';
+              lastTranscriptRef.current = '';
               setInterimTranscript('');
               
               setupRecognition(recognition);
