@@ -179,29 +179,24 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     };
 
     recognition.onresult = (event: any) => {
-      let interim = '';
-      let final = '';
+      clearSilenceTimer();
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      let allFinal = '';
+      let allInterim = '';
+      for (let i = 0; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          final += transcript;
+          allFinal += (allFinal ? ' ' : '') + transcript;
         } else {
-          interim += transcript;
+          allInterim += (allInterim ? ' ' : '') + transcript;
         }
       }
 
-      clearSilenceTimer();
+      finalRef.current = allFinal;
 
-      if (final.trim()) {
-        finalRef.current = finalRef.current
-          ? finalRef.current + ' ' + final.trim()
-          : final.trim();
-      }
-
-      const displayText = finalRef.current
-        ? finalRef.current + (interim.trim() ? ' ' + interim.trim() : '')
-        : interim.trim();
+      const displayText = allFinal
+        ? allFinal + (allInterim ? ' ' + allInterim : '')
+        : allInterim;
 
       interimRef.current = displayText;
       setInterimTranscript(displayText);
@@ -215,8 +210,8 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         lastInterimTimeRef.current = now;
 
         silenceTimerRef.current = setTimeout(() => {
-          const accumulatedText = finalRef.current.trim();
-          if (accumulatedText && isListeningRef.current) {
+          const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
+          if (textToSubmit && isListeningRef.current) {
             isListeningRef.current = false;
             finalRef.current = '';
             interimRef.current = '';
@@ -225,7 +220,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             setStatus('thinking');
 
             if (onResultCallbackRef.current) {
-              onResultCallbackRef.current(accumulatedText);
+              onResultCallbackRef.current(textToSubmit);
             }
           }
         }, adaptiveDelay);
