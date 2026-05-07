@@ -237,7 +237,8 @@ export class ChatService {
       leadContext,
       knowledgeContext,
       conversationState,
-      languageCode
+      languageCode,
+      intent
     );
 
     let response = intentResult.response;
@@ -285,19 +286,7 @@ export class ChatService {
       return { response, conversationId: convId, requiresAuth: requiresAuth, usedRag, style, language: languageCode };
     }
 
-    const llmResponse = await this.llmService.generateResponse(message, historyMessages, {
-      memoryContext,
-      leadContext,
-      knowledgeContext: knowledgeContext || undefined,
-      style,
-      conversationState,
-      language: languageCode,
-    });
-    const formattedResponse = this.formatResponse(llmResponse, state, style);
-
-    await this.saveAssistantMessage(convId, formattedResponse, userId, startTime);
-
-    return { response: formattedResponse, conversationId: convId, requiresAuth: false, style, language: languageCode };
+    throw new Error('Failed to generate response');
   }
 
   private async processWithKnownIntent(
@@ -309,9 +298,10 @@ export class ChatService {
     leadContext?: string,
     knowledgeContext?: string,
     conversationState?: string,
-    language?: string
+    language?: string,
+    intent?: Intent | null
   ): Promise<ExecutionResult> {
-    const intent = detectIntent(message);
+    if (!intent) intent = detectIntent(message);
 
     if (!intent) {
       try {

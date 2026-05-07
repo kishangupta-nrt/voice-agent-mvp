@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ENV } from '../config/env';
-import { sendVerificationEmail } from '../services/email.service';
 
 const router = Router();
 

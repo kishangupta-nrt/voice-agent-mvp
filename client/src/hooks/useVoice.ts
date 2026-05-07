@@ -42,13 +42,6 @@ const getAdaptiveSilenceDelay = (wordCount: number, speechDurationMs: number): n
   return Math.min(Math.max(delay, MIN_SILENCE_DELAY), MAX_SILENCE_DELAY);
 };
 
-const DEVANAGARI = /[\u0900-\u097F]/;
-const BENGALI = /[\u0980-\u09FF]/;
-const TAMIL = /[\u0B80-\u0BFF]/;
-const TELUGU = /[\u0C00-\u0C7F]/;
-const GUJARATI = /[\u0A80-\u0AFF]/;
-const KANNADA = /[\u0C80-\u0CFF]/;
-
 const getBcp47 = (lang: string): string => {
   const map: Record<string, string> = {
     hi: 'hi-IN', mr: 'mr-IN', ta: 'ta-IN', te: 'te-IN',
@@ -97,8 +90,7 @@ const selectFromList = (voices: SpeechSynthesisVoice[], languageCode: string = '
         v.name.toLowerCase().includes('woman') ||
         v.name.toLowerCase().includes('zira') ||
         v.name.toLowerCase().includes('samantha') ||
-        v.name.toLowerCase().includes('ava') ||
-        v.name.toLowerCase().includes('female')
+        v.name.toLowerCase().includes('ava')
       );
       return female || langVoices[0];
     }
@@ -125,6 +117,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [listening, setListening] = useState(false);
 
   const styleRef = useRef<ConversationStyle | null>(detectedStyle);
   const isActiveRef = useRef(false);
@@ -161,6 +154,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     if (textToSubmit && isListeningRef.current) {
       textSubmittedRef.current = true;
       isListeningRef.current = false;
+      setListening(false);
       finalRef.current = '';
       interimRef.current = '';
       lastTranscriptRef.current = '';
@@ -181,6 +175,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     recognition.onstart = () => {
       isListeningRef.current = true;
+      setListening(true);
       speechStartTimeRef.current = Date.now();
       lastInterimTimeRef.current = Date.now();
       setStatus('listening');
@@ -248,6 +243,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       
       clearSilenceTimer();
       isListeningRef.current = false;
+      setListening(false);
       
       switch (event.error) {
         case 'no-speech':
@@ -266,6 +262,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     recognition.onend = () => {
       isListeningRef.current = false;
+      setListening(false);
       if (!textSubmittedRef.current) {
         const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
         if (textToSubmit && onResultCallbackRef.current) {
@@ -314,6 +311,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       recognitionRef.current = recognition;
       isActiveRef.current = true;
       isListeningRef.current = true;
+      setListening(true);
       onResultCallbackRef.current = onResult;
 
       setError(null);
@@ -327,6 +325,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       recognition.start();
     } catch (err: any) {
       isListeningRef.current = false;
+      setListening(false);
       setError(err.message || 'Failed to start');
       setStatus('error');
     }
@@ -346,6 +345,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
 
     isListeningRef.current = false;
+    setListening(false);
     speechSynthesis.cancel();
     setStatus('idle');
     setError(null);
@@ -392,6 +392,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             const recognition = new SpeechRecognitionConstructor();
             recognitionRef.current = recognition;
             isListeningRef.current = true;
+            setListening(true);
             interimRef.current = '';
             finalRef.current = '';
             lastTranscriptRef.current = '';
@@ -420,6 +421,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
               const recognition = new SpeechRecognitionConstructor();
               recognitionRef.current = recognition;
               isListeningRef.current = true;
+              setListening(true);
               interimRef.current = '';
               finalRef.current = '';
               lastTranscriptRef.current = '';
@@ -459,7 +461,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     interimTranscript,
     error,
     isSupported,
-    isListening: isListeningRef.current,
+    isListening: listening,
     startConversation,
     stopConversation,
     speak,

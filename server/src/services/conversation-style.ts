@@ -30,20 +30,20 @@ const TECHNICAL_TERMS = [
 const HINDI_LATIN = [
   'hai', 'hun', 'kya', 'aap', 'mujhe', 'nahi', 'karna', 'bataiye', 'kaise', 'madad',
   'chahiye', 'haan', 'achha', 'theek', 'kyun', 'kahan', 'kab', 'kaun', 'tum', 'tera',
-  'mera', 'uska', 'iska', 'unko', 'mujhe', 'hum', 'main', 'naam', 'aapka',
+  'mera', 'uska', 'iska', 'unko', 'hum', 'main', 'naam', 'aapka',
   'aapki', 'aapke', 'hain', 'humein', 'bolna', 'baat', 'sun', 'dekho', 'aao', 'jao',
   'karo', 'suno', 'batao', 'pata', 'jaante', 'samajh', 'karein', 'hona', 'jaana', 'aana',
-  'bolna', 'dekhna', 'sach', 'website', 'kaise', 'kya', 'hai', 'ho', 'bilkul', 'zaroor',
+  'dekhna', 'sach', 'website', 'bilkul', 'zaroor',
   'bas', 'sirf', 'aur', 'lekin', 'yaani', 'matlab', 'shayad', 'lagta', 'lagti',
-  'karna', 'bana', 'banani', 'banwana', 'banao', 'banega', 'banegi', 'banayenge',
-  'karna', 'dekhna', 'sunna', 'samjhana', 'batana', 'puchna', 'bolna', 'likhna',
+  'bana', 'banani', 'banwana', 'banao', 'banega', 'banegi', 'banayenge',
+  'sunna', 'samjhana', 'batana', 'puchna', 'likhna',
 ];
 
 const MARATHI_LATIN = [
   'ahe', 'ahot', 'kaay', 'tumhala', 'mala', 'nahi', 'sangaa', 'madat', 'hava', 'baran',
   'mhanun', 'pan', 'tumhi', 'mi', 'tujhe', 'tula', 'tyala', 'ticha', 'nav', 'bol',
-  'bolaa', 'bagha', 'jra', 'khup', 'barach', 'kasa', 'kasa', 'kasel', 'kothe', 'kadhi',
-  'karaycha', 'karaychi', 'karayche', 'banavaycha', 'madat', 'havi', 'aamhi', 'tumcha',
+  'bolaa', 'bagha', 'jra', 'khup', 'barach', 'kasa', 'kasel', 'kothe', 'kadhi',
+  'karaycha', 'karaychi', 'karayche', 'banavaycha', 'havi', 'aamhi', 'tumcha',
 ];
 
 export interface StyleResult {
