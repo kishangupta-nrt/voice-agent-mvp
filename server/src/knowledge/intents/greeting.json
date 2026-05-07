@@ -3,19 +3,19 @@
     {
       "id": "greeting",
       "name": "Greeting",
-      "triggers": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "namaste", "namaskar", "kaise ho", "hi there"],
+      "triggers": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "namaste", "namaskar"],
       "priority": 100,
       "requiresAuth": false,
-      "response": "Hi there! I'm here to help you with your project. What are you looking to build?",
+      "response": "Boliye, kaise help kar sakti hoon?",
       "followUp": null
     },
     {
       "id": "who_are_you",
       "name": "Identity Inquiry",
-      "triggers": ["who is this", "who are you", "kaun ho", "tumhara naam", "your name", "kya naam hai"],
+      "triggers": ["who is this", "who are you", "kaun ho", "tumhara naam kya hai", "your name", "kya naam hai", "aapka naam"],
       "priority": 98,
       "requiresAuth": false,
-      "response": "I'm Aisha, a project consultant. I'll help you figure out what you need and connect you with the right team.",
+      "response": "Main Aisha hoon, project consultant. Bataiye kya project hai?",
       "followUp": "ask_project_type"
     },
     {

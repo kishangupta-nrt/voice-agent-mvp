@@ -47,10 +47,15 @@ interface DynamicPromptLayers {
   leadContext?: string;
   knowledgeContext?: string;
   style?: string;
+  conversationState?: string;
 }
 
 const buildSystemContent = (layers: DynamicPromptLayers): string => {
   const parts = [SYSTEM_PROMPT];
+
+  if (layers.conversationState) {
+    parts.push(layers.conversationState);
+  }
 
   if (layers.memoryContext) {
     parts.push(layers.memoryContext);
@@ -84,7 +89,7 @@ const buildMistralMessages = (
     { role: 'system', content: systemContent },
   ];
 
-  const recentHistory = history.slice(-8);
+  const recentHistory = history.slice(-20);
   for (const m of recentHistory) {
     messages.push({
       role: m.role === 'user' ? 'user' : 'assistant',
@@ -103,7 +108,7 @@ const buildOllamaPrompt = (
   layers: DynamicPromptLayers
 ): string => {
   const context = history
-    .slice(-5)
+    .slice(-20)
     .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
     .join('\n');
 

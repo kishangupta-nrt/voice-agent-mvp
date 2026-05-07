@@ -320,6 +320,35 @@ class AdminRepository {
     }
   }
 
+  async bulkDeleteConversations(conversationIds: string[], userId: string): Promise<number> {
+    const client = getAdminClient();
+    if (!client) return 0;
+
+    try {
+      const { data, error: convError } = await client
+        .from('conversations')
+        .delete()
+        .eq('user_id', userId)
+        .in('id', conversationIds)
+        .select('id');
+
+      if (convError) return 0;
+
+      const deletedIds = (data || []).map(c => c.id);
+
+      if (deletedIds.length > 0) {
+        await client
+          .from('messages')
+          .delete()
+          .in('conversation_id', deletedIds);
+      }
+
+      return deletedIds.length;
+    } catch {
+      return 0;
+    }
+  }
+
   private detectLanguage(text: string): string {
     const lower = text.toLowerCase();
     if (/[\u0900-\u097F]/.test(text)) return 'hindi';

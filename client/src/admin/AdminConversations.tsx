@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Trash } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 interface ConversationRecord {
@@ -26,6 +26,8 @@ export function AdminConversations({ userId, onSelectConversation, onDeleteConve
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'messages'>('date');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchConversations();
@@ -64,10 +66,61 @@ export function AdminConversations({ userId, onSelectConversation, onDeleteConve
       });
       if (res.ok) {
         setConversations(prev => prev.filter(c => c.id !== id));
+        setSelected(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         onDeleteConversation(id);
       }
     } catch (e) {
       console.error('Delete failed:', e);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} conversations? This cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(`${API_URL}/chat/admin/conversations/bulk`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ids: Array.from(selected) }),
+      });
+      if (res.ok) {
+        setConversations(prev => prev.filter(c => !selected.has(c.id)));
+        const ids = [...selected];
+        setSelected(new Set());
+        ids.forEach(id => onDeleteConversation(id));
+      }
+    } catch (e) {
+      console.error('Bulk delete failed:', e);
+    }
+    setDeleting(false);
+  };
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === sorted.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(sorted.map(c => c.id)));
     }
   };
 
@@ -115,6 +168,25 @@ export function AdminConversations({ userId, onSelectConversation, onDeleteConve
         </div>
       </div>
 
+      {sorted.length > 0 && (
+        <div className="admin-bulk-bar">
+          <label className="admin-select-all">
+            <input
+              type="checkbox"
+              checked={selected.size === sorted.length && sorted.length > 0}
+              onChange={toggleSelectAll}
+            />
+            {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
+          </label>
+          {selected.size > 0 && (
+            <button className="admin-bulk-delete-btn" onClick={handleBulkDelete} disabled={deleting}>
+              <Trash size={14} />
+              {deleting ? 'Deleting...' : `Delete ${selected.size}`}
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="admin-conversations-list">
         {sorted.length === 0 && (
           <div className="admin-empty">No conversations found</div>
@@ -122,10 +194,17 @@ export function AdminConversations({ userId, onSelectConversation, onDeleteConve
         {sorted.map(conv => (
           <div
             key={conv.id}
-            className="admin-conversation-card"
+            className={`admin-conversation-card${selected.has(conv.id) ? ' selected' : ''}`}
             onClick={() => onSelectConversation(conv.id)}
           >
             <div className="admin-conv-header">
+              <label className="admin-conv-checkbox" onClick={(e) => toggleSelect(conv.id, e)}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(conv.id)}
+                  readOnly
+                />
+              </label>
               <span className="admin-conv-title">
                 {conv.first_message ? truncate(conv.first_message, 60) : 'Empty conversation'}
               </span>

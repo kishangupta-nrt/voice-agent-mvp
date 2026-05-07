@@ -4,7 +4,7 @@ import { useVoice, ConversationStyle } from './hooks/useVoice';
 import { useAuth, AuthUser } from './hooks/useAuth';
 import { VoiceButton } from './components/VoiceButton';
 import { StatusDisplay } from './components/StatusDisplay';
-import { Eye, EyeOff, LayoutDashboard } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { API_URL } from './config/api';
 import { detectLanguage, LANGUAGE_DISPLAY } from './config/languages';
 import { AdminPanel } from './admin/AdminPanel';
@@ -246,9 +246,6 @@ function AppContent({ user, token, logout }: { user: AuthUser; token: string; lo
           <div className="app">
             <div className="glass-card user-bar">
               <span>{user.email}</span>
-              <button onClick={() => navigate('/admin')} className="admin-btn">
-                <LayoutDashboard size={14} /> Admin
-              </button>
               <button onClick={logout} className="logout-btn">Logout</button>
             </div>
           </div>

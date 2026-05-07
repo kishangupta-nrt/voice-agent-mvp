@@ -159,4 +159,23 @@ export class ChatController {
       return res.status(500).json({ error: 'Failed to delete conversation' });
     }
   }
+
+  public async adminBulkDeleteConversations(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'Array of conversation IDs required' });
+      }
+      const validIds = ids.filter((id: string) => isValidUUID(id));
+      if (validIds.length === 0) {
+        return res.status(400).json({ error: 'No valid conversation IDs provided' });
+      }
+      const deleted = await adminRepository.bulkDeleteConversations(validIds, userId);
+      return res.status(200).json({ success: true, deleted });
+    } catch {
+      return res.status(500).json({ error: 'Failed to delete conversations' });
+    }
+  }
 }

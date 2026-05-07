@@ -32,13 +32,25 @@ export function detectIntent(message: string): Intent | null {
   for (const intent of allIntents) {
     for (const trigger of intent.triggers) {
       const triggerLower = trigger.toLowerCase();
-      if (lower.includes(triggerLower) || words.some(w => w === triggerLower)) {
-        return intent;
+
+      if (triggerLower.includes(' ')) {
+        if (lower.includes(triggerLower)) {
+          return intent;
+        }
+      } else {
+        const wordBoundary = new RegExp(`\\b${escapeRegex(triggerLower)}\\b`, 'i');
+        if (wordBoundary.test(lower)) {
+          return intent;
+        }
       }
     }
   }
 
   return null;
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export { greetingIntents, faqIntents, closingIntents };

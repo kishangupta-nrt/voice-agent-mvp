@@ -110,6 +110,7 @@ interface LlmPromptLayers {
   leadContext?: string;
   knowledgeContext?: string;
   style?: string;
+  conversationState?: string;
 }
 
 export class ChatService {
@@ -147,7 +148,7 @@ export class ChatService {
     return varyResponse(CASUAL_RESPONSES[key]);
   }
 
-  private async tryRagQuery(query: string, style: ConversationStyle): Promise<string | null> {
+  private async tryRagQuery(query: string, style: ConversationStyle, history: { role: string; content: string }[]): Promise<string | null> {
     try {
       const results = await ragService.search(query, 2);
 
@@ -158,7 +159,7 @@ export class ChatService {
       const context = ragService.getContext(results);
       const prompt = ragService.getAnswerWithContext(query, results);
 
-      const answer = await this.llmService.generateResponse(prompt, [], { style });
+      const answer = await this.llmService.generateResponse(prompt, history, { style });
 
       return answer;
     } catch (error) {
@@ -196,7 +197,7 @@ export class ChatService {
     const state = getOrCreateState(convId);
     state.ragUsedThisTurn = false;
 
-    const history = await this.chatRepository.getConversationHistory(convId, 5);
+    const history = await this.chatRepository.getConversationHistory(convId, 20);
     const historyMessages = toHistoryMessages(history);
 
     const memoryContext = await memoryService.getContextForPrompt(userId);
@@ -222,6 +223,11 @@ export class ChatService {
       ? knowledgeService.getKnowledgeForIntent(intent.id)
       : '';
 
+    const turnCount = state.context.turnCount;
+    const conversationState = turnCount > 0
+      ? `CONVERSATION STATE: This is turn #${turnCount}. Last topic discussed: ${state.context.lastTopic || 'none'}. You are already in an ongoing conversation. Do NOT reintroduce yourself. Respond naturally as a continuation.`
+      : undefined;
+
     const intentResult = await this.processWithKnownIntent(
       message,
       state,
@@ -229,7 +235,8 @@ export class ChatService {
       memoryContext,
       style,
       leadContext,
-      knowledgeContext
+      knowledgeContext,
+      conversationState
     );
 
     let response = intentResult.response;
@@ -243,7 +250,7 @@ export class ChatService {
         conversationManager.updateContext(convId, intent?.id || undefined, topic);
       }
     } else {
-      const ragAnswer = await this.tryRagQuery(message, style);
+      const ragAnswer = await this.tryRagQuery(message, style, historyMessages);
 
       if (ragAnswer) {
         response = this.formatResponse(ragAnswer, state, style);
@@ -255,6 +262,7 @@ export class ChatService {
           leadContext,
           knowledgeContext: knowledgeContext || undefined,
           style,
+          conversationState,
         });
         if (llmAnswer) {
           response = this.formatResponse(llmAnswer, state, style);
@@ -280,6 +288,7 @@ export class ChatService {
       leadContext,
       knowledgeContext: knowledgeContext || undefined,
       style,
+      conversationState,
     });
     const formattedResponse = this.formatResponse(llmResponse, state, style);
 
@@ -295,7 +304,8 @@ export class ChatService {
     memoryContext?: string,
     style?: ConversationStyle,
     leadContext?: string,
-    knowledgeContext?: string
+    knowledgeContext?: string,
+    conversationState?: string
   ): Promise<ExecutionResult> {
     const intent = detectIntent(message);
 
@@ -306,10 +316,40 @@ export class ChatService {
           leadContext,
           knowledgeContext,
           style,
+          conversationState,
         });
         return {
           response,
           intent: null,
+          customer: state.customer || undefined,
+          requiresAuth: false,
+          requiresSlots: [],
+          slotValues: {},
+        };
+      } catch (error) {
+        return {
+          response: '',
+          intent: null,
+          customer: state.customer || undefined,
+          requiresAuth: false,
+          requiresSlots: [],
+          slotValues: {},
+        };
+      }
+    }
+
+    if (intent.id === 'greeting' && state.context.turnCount > 0) {
+      try {
+        const response = await this.llmService.generateResponse(message, history, {
+          memoryContext,
+          leadContext,
+          knowledgeContext,
+          style,
+          conversationState,
+        });
+        return {
+          response,
+          intent,
           customer: state.customer || undefined,
           requiresAuth: false,
           requiresSlots: [],
