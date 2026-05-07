@@ -134,6 +134,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const interimRef = useRef('');
   const finalRef = useRef('');
   const lastTranscriptRef = useRef('');
+  const textSubmittedRef = useRef(false);
   const onResultCallbackRef = useRef<((text: string) => void) | null>(null);
   const internalStatusRef = useRef<string>('idle');
   const speechStartTimeRef = useRef<number>(0);
@@ -153,6 +154,25 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       silenceTimerRef.current = null;
     }
   };
+
+  const submitAccumulatedText = useCallback((recognition: any) => {
+    if (textSubmittedRef.current) return;
+    const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
+    if (textToSubmit && isListeningRef.current) {
+      textSubmittedRef.current = true;
+      isListeningRef.current = false;
+      finalRef.current = '';
+      interimRef.current = '';
+      lastTranscriptRef.current = '';
+      setInterimTranscript('');
+      try { recognition.stop(); } catch {}
+      setStatus('thinking');
+
+      if (onResultCallbackRef.current) {
+        onResultCallbackRef.current(textToSubmit);
+      }
+    }
+  }, []);
 
   const setupRecognition = useCallback((recognition: any) => {
     recognition.lang = languageRef.current;
@@ -180,6 +200,8 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     };
 
     recognition.onresult = (event: any) => {
+      if (textSubmittedRef.current) return;
+
       let allFinal = '';
       let allInterim = '';
       for (let i = 0; i < event.results.length; i++) {
@@ -197,10 +219,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         ? allFinal + (allInterim ? ' ' + allInterim : '')
         : allInterim;
 
-      if (!displayText.trim() || displayText === lastTranscriptRef.current) {
+      const trimmed = displayText.trim();
+      if (!trimmed || trimmed === lastTranscriptRef.current) {
         return;
       }
-      lastTranscriptRef.current = displayText;
+      lastTranscriptRef.current = trimmed;
 
       clearSilenceTimer();
       interimRef.current = displayText;
@@ -208,26 +231,13 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
       const now = Date.now();
       const speechDuration = now - speechStartTimeRef.current;
-      const wordCount = displayText.trim().split(/\s+/).length;
+      const wordCount = trimmed.split(/\s+/).length;
       const adaptiveDelay = getAdaptiveSilenceDelay(wordCount, speechDuration);
 
       lastInterimTimeRef.current = now;
 
       silenceTimerRef.current = setTimeout(() => {
-        const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
-        if (textToSubmit && isListeningRef.current) {
-          isListeningRef.current = false;
-          finalRef.current = '';
-          interimRef.current = '';
-          lastTranscriptRef.current = '';
-          setInterimTranscript('');
-          recognition.stop();
-          setStatus('thinking');
-
-          if (onResultCallbackRef.current) {
-            onResultCallbackRef.current(textToSubmit);
-          }
-        }
+        submitAccumulatedText(recognition);
       }, adaptiveDelay);
     };
 
@@ -256,6 +266,18 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     recognition.onend = () => {
       isListeningRef.current = false;
+      if (!textSubmittedRef.current) {
+        const textToSubmit = finalRef.current.trim() || interimRef.current.trim();
+        if (textToSubmit && onResultCallbackRef.current) {
+          textSubmittedRef.current = true;
+          finalRef.current = '';
+          interimRef.current = '';
+          lastTranscriptRef.current = '';
+          setInterimTranscript('');
+          setStatus('thinking');
+          onResultCallbackRef.current(textToSubmit);
+        }
+      }
     };
   }, []);
 
@@ -299,6 +321,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       interimRef.current = '';
       finalRef.current = '';
       lastTranscriptRef.current = '';
+      textSubmittedRef.current = false;
 
       setupRecognition(recognition);
       recognition.start();
@@ -315,6 +338,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     interimRef.current = '';
     finalRef.current = '';
     lastTranscriptRef.current = '';
+    textSubmittedRef.current = false;
 
     if (recognitionRef.current) {
       recognitionRef.current.abort();
@@ -371,6 +395,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             interimRef.current = '';
             finalRef.current = '';
             lastTranscriptRef.current = '';
+            textSubmittedRef.current = false;
             setInterimTranscript('');
             
             setupRecognition(recognition);
@@ -398,6 +423,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
               interimRef.current = '';
               finalRef.current = '';
               lastTranscriptRef.current = '';
+              textSubmittedRef.current = false;
               setInterimTranscript('');
               
               setupRecognition(recognition);
