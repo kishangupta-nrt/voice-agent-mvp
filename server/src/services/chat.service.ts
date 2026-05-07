@@ -236,7 +236,8 @@ export class ChatService {
       style,
       leadContext,
       knowledgeContext,
-      conversationState
+      conversationState,
+      languageCode
     );
 
     let response = intentResult.response;
@@ -263,6 +264,7 @@ export class ChatService {
           knowledgeContext: knowledgeContext || undefined,
           style,
           conversationState,
+          language: languageCode,
         });
         if (llmAnswer) {
           response = this.formatResponse(llmAnswer, state, style);
@@ -289,6 +291,7 @@ export class ChatService {
       knowledgeContext: knowledgeContext || undefined,
       style,
       conversationState,
+      language: languageCode,
     });
     const formattedResponse = this.formatResponse(llmResponse, state, style);
 
@@ -305,7 +308,8 @@ export class ChatService {
     style?: ConversationStyle,
     leadContext?: string,
     knowledgeContext?: string,
-    conversationState?: string
+    conversationState?: string,
+    language?: string
   ): Promise<ExecutionResult> {
     const intent = detectIntent(message);
 
@@ -317,6 +321,7 @@ export class ChatService {
           knowledgeContext,
           style,
           conversationState,
+          language,
         });
         return {
           response,
@@ -346,6 +351,7 @@ export class ChatService {
           knowledgeContext,
           style,
           conversationState,
+          language,
         });
         return {
           response,

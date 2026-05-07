@@ -48,6 +48,7 @@ interface DynamicPromptLayers {
   knowledgeContext?: string;
   style?: string;
   conversationState?: string;
+  language?: string;
 }
 
 const buildSystemContent = (layers: DynamicPromptLayers): string => {
@@ -70,8 +71,9 @@ const buildSystemContent = (layers: DynamicPromptLayers): string => {
   }
 
   if (layers.style && layers.style !== 'english') {
+    const langName = layers.language ? (LANGUAGE_NAMES[layers.language] || layers.language) : layers.style;
     parts.push(
-      `CONVERSATION STYLE: The user speaks in ${LANGUAGE_NAMES[layers.style] || layers.style}. Mirror their style exactly. Keep technical terms (React, API, AI, etc.) in English. Respond naturally — do not force pure translations.`
+      `CONVERSATION STYLE: The user speaks in ${langName}. Mirror their style exactly. Keep technical terms (React, API, AI, etc.) in English. Respond naturally — do not force pure translations.`
     );
   }
 

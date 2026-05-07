@@ -132,19 +132,12 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interimRef = useRef('');
+  const finalRef = useRef('');
   const onResultCallbackRef = useRef<((text: string) => void) | null>(null);
   const internalStatusRef = useRef<string>('idle');
   const speechStartTimeRef = useRef<number>(0);
   const lastInterimTimeRef = useRef<number>(0);
   const languageRef = useRef('en-US');
-
-  useEffect(() => {
-    if (detectedLang) {
-      languageRef.current = getBcp47(detectedLang);
-    } else {
-      languageRef.current = 'en-US';
-    }
-  }, [detectedLang]);
 
   useEffect(() => {
     styleRef.current = detectedStyle;
@@ -198,43 +191,41 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         }
       }
 
+      clearSilenceTimer();
+
       if (final.trim()) {
-        clearSilenceTimer();
-        interimRef.current = '';
-        setInterimTranscript('');
-        
-        if (isListeningRef.current) {
-          isListeningRef.current = false;
-          recognition.stop();
-          setStatus('thinking');
-          
-          if (onResultCallbackRef.current) {
-            onResultCallbackRef.current(final.trim());
-          }
-        }
-      } else if (interim.trim()) {
-        clearSilenceTimer();
-        interimRef.current = interim;
-        setInterimTranscript(interim);
-        
+        finalRef.current = finalRef.current
+          ? finalRef.current + ' ' + final.trim()
+          : final.trim();
+      }
+
+      const displayText = finalRef.current
+        ? finalRef.current + (interim.trim() ? ' ' + interim.trim() : '')
+        : interim.trim();
+
+      interimRef.current = displayText;
+      setInterimTranscript(displayText);
+
+      if (displayText.trim()) {
         const now = Date.now();
         const speechDuration = now - speechStartTimeRef.current;
-        const wordCount = interim.trim().split(/\s+/).length;
+        const wordCount = displayText.trim().split(/\s+/).length;
         const adaptiveDelay = getAdaptiveSilenceDelay(wordCount, speechDuration);
-        
+
         lastInterimTimeRef.current = now;
-        
+
         silenceTimerRef.current = setTimeout(() => {
-          const textToSend = interimRef.current.trim();
-          if (textToSend && isListeningRef.current) {
+          const accumulatedText = finalRef.current.trim();
+          if (accumulatedText && isListeningRef.current) {
             isListeningRef.current = false;
+            finalRef.current = '';
             interimRef.current = '';
             setInterimTranscript('');
             recognition.stop();
             setStatus('thinking');
-            
+
             if (onResultCallbackRef.current) {
-              onResultCallbackRef.current(textToSend);
+              onResultCallbackRef.current(accumulatedText);
             }
           }
         }, adaptiveDelay);
@@ -307,6 +298,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       setError(null);
       setInterimTranscript('');
       interimRef.current = '';
+      finalRef.current = '';
 
       setupRecognition(recognition);
       recognition.start();
@@ -321,6 +313,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     isActiveRef.current = false;
     clearSilenceTimer();
     interimRef.current = '';
+    finalRef.current = '';
 
     if (recognitionRef.current) {
       recognitionRef.current.abort();
@@ -374,6 +367,9 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             const recognition = new SpeechRecognitionConstructor();
             recognitionRef.current = recognition;
             isListeningRef.current = true;
+            interimRef.current = '';
+            finalRef.current = '';
+            setInterimTranscript('');
             
             setupRecognition(recognition);
             recognition.start();
@@ -397,6 +393,9 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
               const recognition = new SpeechRecognitionConstructor();
               recognitionRef.current = recognition;
               isListeningRef.current = true;
+              interimRef.current = '';
+              finalRef.current = '';
+              setInterimTranscript('');
               
               setupRecognition(recognition);
               recognition.start();
